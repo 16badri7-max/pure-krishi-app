@@ -1,0 +1,56 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --forest: #176B45;
+    --dark-green: #104D35;
+    --leaf-green: #5BA66B;
+    --light-green: #F0F7F0;
+    --warm-cream: #FAF8F0;
+    --dark-text: #17231C;
+    --secondary-text: #66736A;
+  }
+
+  body {
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    color: #17231C;
+    background-color: #FAF8F0;
+    min-height: 100vh;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Outfit', 'Plus Jakarta Sans', sans-serif;
+  }
+}
+
+/* Custom subtle scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #F0F7F0;
+}
+::-webkit-scrollbar-thumb {
+  background: #A3C9AE;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #5BA66B;
+}
+
+/* Glass & Card effects */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(23, 107, 69, 0.08);
+}
+
+.subtle-badge {
+  background: #F0F7F0;
+  color: #176B45;
+  border: 1px solid #DCECDC;
+}
