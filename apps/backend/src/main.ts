@@ -13,7 +13,13 @@ async function bootstrap() {
 
   // CORS
   app.enableCors({
-    origin: [process.env.WEB_URL || 'http://localhost:3000', 'http://localhost:5173'],
+    origin: [
+      process.env.WEB_URL || 'http://localhost:3000',
+      'http://localhost:5173',
+      'https://pure-krishi-app.vercel.app',
+      /\.vercel\.app$/,
+      /\.onrender\.com$/,
+    ],
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
     credentials: true,
   });

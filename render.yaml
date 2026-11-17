@@ -1,0 +1,51 @@
+services:
+  # ── NestJS Backend API ───────────────────────────────────────────
+  - type: web
+    name: pure-krishi-backend
+    runtime: node
+    rootDir: apps/backend
+    buildCommand: npm install && npm run build
+    startCommand: node dist/main
+    plan: free
+    healthCheckPath: /api/v1/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3001
+      - key: JWT_SECRET
+        generateValue: true
+      - key: DATABASE_URL
+        fromDatabase:
+          name: pure-krishi-db
+          property: connectionString
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: WEB_URL
+        value: https://pure-krishi-app.vercel.app
+
+  # ── Python FastAPI AI Service ────────────────────────────────────
+  - type: web
+    name: pure-krishi-ai
+    runtime: python
+    rootDir: apps/ai-service
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: WEATHER_API_KEY
+        sync: false
+
+# ── PostgreSQL Database ──────────────────────────────────────────
+databases:
+  - name: pure-krishi-db
+    plan: free
+    databaseName: pure_krishi
+    user: pure_krishi_user
