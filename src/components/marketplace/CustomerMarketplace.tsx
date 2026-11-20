@@ -2,28 +2,28 @@ import React, { useState } from 'react';
 import { 
   ShoppingBag, 
   Search, 
-  Filter, 
   ShieldCheck, 
   Plus, 
   Minus, 
   CheckCircle2, 
   MapPin, 
-  Sparkles, 
-  Wheat, 
   ArrowRight, 
   ExternalLink, 
   Truck, 
   Heart, 
   UserCheck, 
   HelpCircle, 
-  Clock, 
   Package, 
-  CreditCard,
   Building2,
-  Trash2,
-  Tag,
-  Lock,
-  LockKeyhole
+  Utensils,
+  Hotel,
+  ChefHat,
+  Store,
+  Users,
+  User,
+  PhoneCall,
+  FileText,
+  Lock
 } from 'lucide-react';
 import { useStore } from '../../services/useStore';
 import { ProductListing, CustomerOrder, SavedAddress } from '../../types';
@@ -40,6 +40,16 @@ export type CustomerNav =
   | 'profile'
   | 'support';
 
+// Bulk buyer types
+const bulkBuyerTypes = [
+  { id: 'hotel', label: 'Hotels & Resorts', icon: Hotel, desc: 'Minimum 50 kg per order', color: 'bg-blue-50 border-blue-200 text-blue-800' },
+  { id: 'restaurant', label: 'Restaurants & Cafes', icon: Utensils, desc: 'Minimum 20 kg per order', color: 'bg-orange-50 border-orange-200 text-orange-800' },
+  { id: 'catering', label: 'Catering Services', icon: ChefHat, desc: 'Minimum 100 kg per order', color: 'bg-purple-50 border-purple-200 text-purple-800' },
+  { id: 'retail', label: 'Retail / Kirana Stores', icon: Store, desc: 'Minimum 25 kg per order', color: 'bg-emerald-50 border-emerald-200 text-emerald-800' },
+  { id: 'institution', label: 'Schools & Institutions', icon: Building2, desc: 'Minimum 75 kg per order', color: 'bg-rose-50 border-rose-200 text-rose-800' },
+  { id: 'corporate', label: 'Corporate Canteens', icon: Users, desc: 'Minimum 30 kg per order', color: 'bg-amber-50 border-amber-200 text-amber-800' },
+];
+
 export const CustomerMarketplace: React.FC = () => {
   const { state, store } = useStore();
   const [activeNav, setActiveNav] = useState<CustomerNav>('shop');
@@ -49,6 +59,15 @@ export const CustomerMarketplace: React.FC = () => {
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [orderSuccess, setOrderSuccess] = useState<CustomerOrder | null>(null);
   const [trackingOrder, setTrackingOrder] = useState<CustomerOrder | null>(state.customerOrders[0] || null);
+
+  // Customer type: individual or bulk
+  const [customerType, setCustomerType] = useState<'individual' | 'bulk'>('individual');
+  const [selectedBulkType, setSelectedBulkType] = useState<string | null>(null);
+  const [bulkQty, setBulkQty] = useState<Record<string, number>>({});
+  const [bulkQuoteSubmitted, setBulkQuoteSubmitted] = useState(false);
+  const [bulkContactName, setBulkContactName] = useState('');
+  const [bulkContactPhone, setBulkContactPhone] = useState('');
+  const [bulkBusinessName, setBulkBusinessName] = useState('');
 
   // Wishlist state
   const [wishlistIds, setWishlistIds] = useState<string[]>(['prd-01', 'prd-04']);
@@ -60,11 +79,8 @@ export const CustomerMarketplace: React.FC = () => {
   const [customerPhone, setCustomerPhone] = useState('+91 98200 44556');
   const [paymentMethod, setPaymentMethod] = useState<'upi' | 'cod' | 'card'>('upi');
   const [deliverySlot, setDeliverySlot] = useState('Tomorrow Morning (07:00 AM - 10:00 AM)');
-  const [hideLockedForB2B, setHideLockedForB2B] = useState(false);
 
   const categories = ['all', 'Vegetables', 'Fruits', 'Grains', 'Pulses', 'Dry fruits', 'Spices'];
-
-  const lockedProductsCount = state.products.filter(p => p.isLockedForCustomers).length;
 
   const filteredProducts = state.products.filter((p) => {
     const matchesSearch = 
@@ -72,7 +88,8 @@ export const CustomerMarketplace: React.FC = () => {
       p.farmerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       p.farmerLocation.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCat = selectedCategory === 'all' || p.category === selectedCategory;
-    const matchesLock = !hideLockedForB2B || !p.isLockedForCustomers;
+    // Individual customers: hide B2B locked. Bulk buyers: show all
+    const matchesLock = customerType === 'bulk' || !p.isLockedForCustomers;
     return matchesSearch && matchesCat && matchesLock;
   });
 
@@ -96,6 +113,11 @@ export const CustomerMarketplace: React.FC = () => {
     setOrderSuccess(order);
     setTrackingOrder(order);
     setIsCheckoutOpen(false);
+  };
+
+  const handleBulkQuote = (e: React.FormEvent) => {
+    e.preventDefault();
+    setBulkQuoteSubmitted(true);
   };
 
   // Order tracking steps
@@ -177,185 +199,289 @@ export const CustomerMarketplace: React.FC = () => {
         
         {/* Navigation 1: Shop */}
         {activeNav === 'shop' && (
-          <div className="space-y-6">
-            {/* Consumer Hero Banner */}
-            <div className="bg-gradient-to-r from-[#176B45] via-[#104D35] to-[#176B45] rounded-3xl p-6 sm:p-7 text-white shadow-xl relative overflow-hidden">
-              <div className="max-w-2xl relative z-10 space-y-2">
-                <div className="inline-flex items-center space-x-2 bg-white/15 px-3 py-1 rounded-full text-xs font-semibold backdrop-blur-sm">
-                  <ShieldCheck className="w-4 h-4 text-emerald-300" />
-                  <span>100% Zero Synthetic Pesticide Residue Tested</span>
-                </div>
-                <h1 className="text-xl sm:text-3xl font-extrabold font-display leading-tight">
-                  Pure Organic Harvest, Delivered Farm-Fresh to Your Kitchen.
-                </h1>
-                <p className="text-xs text-emerald-100 leading-relaxed">
-                  Every product displays its verifiable batch ID, cultivating farmer, and soil test certificate.
-                </p>
-              </div>
+          <div className="space-y-5">
+
+            {/* ── Customer Type Toggle ── */}
+            <div className="flex items-center gap-2 bg-white p-1.5 rounded-2xl border border-[#176B45]/15 shadow-sm w-fit">
+              <button
+                onClick={() => setCustomerType('individual')}
+                className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold transition-all ${
+                  customerType === 'individual'
+                    ? 'bg-[#176B45] text-white shadow-sm'
+                    : 'text-[#17231C] hover:bg-[#F0F7F0]'
+                }`}
+              >
+                <User className="w-4 h-4" />
+                Individual / Retail
+              </button>
+              <button
+                onClick={() => setCustomerType('bulk')}
+                className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold transition-all ${
+                  customerType === 'bulk'
+                    ? 'bg-[#176B45] text-white shadow-sm'
+                    : 'text-[#17231C] hover:bg-[#F0F7F0]'
+                }`}
+              >
+                <Building2 className="w-4 h-4" />
+                Bulk Buyer
+                <span className="bg-amber-400 text-stone-900 text-[9px] font-bold px-1.5 py-0.5 rounded-full">B2B</span>
+              </button>
             </div>
 
-            {/* Filter and Search Bar */}
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-white p-3 rounded-2xl border border-[#176B45]/15 shadow-sm">
-              <div className="relative w-full sm:w-72">
-                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Search organic fruits, veggies..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-9 pr-4 py-1.5 text-xs rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#176B45]"
-                />
-              </div>
-
-              <div className="flex flex-wrap items-center gap-1.5 w-full sm:w-auto">
-                {categories.map((cat) => (
-                  <button
-                    key={cat}
-                    onClick={() => setSelectedCategory(cat)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all capitalize ${
-                      selectedCategory === cat
-                        ? 'bg-[#176B45] text-white shadow-xs'
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                    }`}
-                  >
-                    {cat}
-                  </button>
-                ))}
-
-                {lockedProductsCount > 0 && (
-                  <button
-                    onClick={() => setHideLockedForB2B(!hideLockedForB2B)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 border ${
-                      hideLockedForB2B 
-                        ? 'bg-amber-100 text-amber-900 border-amber-300' 
-                        : 'bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100'
-                    }`}
-                    title="Toggle visibility of items locked for supermarket wholesale contracts"
-                  >
-                    <Lock className="w-3.5 h-3.5 text-amber-700" />
-                    <span>{lockedProductsCount} B2B Locked</span>
-                    <span className="text-[10px] text-amber-700 underline font-normal">
-                      ({hideLockedForB2B ? 'Hidden' : 'Visible'})
-                    </span>
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {/* Products Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-              {filteredProducts.map((prod) => {
-                const cartItem = state.cart.find(i => i.product.id === prod.id);
-                const isWishlisted = wishlistIds.includes(prod.id);
-                return (
-                  <div
-                    key={prod.id}
-                    className="bg-white rounded-2xl border border-[#176B45]/15 overflow-hidden shadow-sm hover:shadow-md transition-all flex flex-col group relative"
-                  >
-                    {/* Wishlist button */}
-                    <button
-                      onClick={() => toggleWishlist(prod.id)}
-                      className={`absolute top-2 right-2 z-10 p-1.5 rounded-full backdrop-blur-xs transition-colors ${
-                        isWishlisted ? 'bg-rose-50 text-rose-600' : 'bg-white/80 text-gray-400 hover:text-rose-500'
-                      }`}
-                    >
-                      <Heart className={`w-4 h-4 ${isWishlisted ? 'fill-current' : ''}`} />
-                    </button>
-
-                    <div className="relative h-44 bg-gray-100 overflow-hidden">
-                      <img
-                        src={prod.imageUrl}
-                        alt={prod.name}
-                        className={`w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 ${
-                          prod.isLockedForCustomers ? 'opacity-85 filter saturate-75' : ''
-                        }`}
-                      />
-                      {prod.isLockedForCustomers && (
-                        <div className="absolute top-2 left-2 z-10 flex items-center space-x-1.5 bg-amber-500 text-stone-900 font-extrabold text-[10px] px-2.5 py-1 rounded-full shadow-md border border-amber-300">
-                          <Lock className="w-3 h-3 text-stone-900" />
-                          <span>B2B Contract Locked</span>
-                        </div>
-                      )}
-                      <div className="absolute bottom-2 left-2">
-                        <span className="bg-black/60 backdrop-blur-xs text-white font-bold text-[9px] px-2 py-0.5 rounded">
-                          {prod.verificationBadge}
-                        </span>
-                      </div>
+            {/* ══ INDIVIDUAL VIEW ══ */}
+            {customerType === 'individual' && (
+              <>
+                <div className="bg-gradient-to-r from-[#176B45] via-[#104D35] to-[#176B45] rounded-3xl p-6 sm:p-7 text-white shadow-xl relative overflow-hidden">
+                  <div className="max-w-2xl relative z-10 space-y-2">
+                    <div className="inline-flex items-center space-x-2 bg-white/15 px-3 py-1 rounded-full text-xs font-semibold backdrop-blur-sm">
+                      <ShieldCheck className="w-4 h-4 text-emerald-300" />
+                      <span>100% Zero Synthetic Pesticide Residue Tested</span>
                     </div>
+                    <h1 className="text-xl sm:text-3xl font-extrabold font-display leading-tight">
+                      Pure Organic Harvest, Delivered Farm-Fresh to Your Kitchen.
+                    </h1>
+                    <p className="text-xs text-emerald-100 leading-relaxed">
+                      Every product displays its verifiable batch ID, cultivating farmer, and soil test certificate.
+                    </p>
+                  </div>
+                </div>
 
-                    <div className="p-4 flex-1 flex flex-col justify-between space-y-3">
-                      <div className="space-y-1">
-                        <div className="flex items-center justify-between text-[11px] text-[#66736A]">
-                          <span>{prod.category}</span>
-                          <span className="font-semibold text-emerald-800">{prod.unit}</span>
-                        </div>
-                        <h3 className="font-bold text-sm text-[#17231C] leading-snug">
-                          {prod.name}
-                        </h3>
-                        <p className="text-xs text-[#66736A] line-clamp-2">
-                          {prod.description}
-                        </p>
-                      </div>
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-white p-3 rounded-2xl border border-[#176B45]/15 shadow-sm">
+                  <div className="relative w-full sm:w-72">
+                    <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <input type="text" placeholder="Search organic fruits, veggies..." value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="w-full pl-9 pr-4 py-1.5 text-xs rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#176B45]" />
+                  </div>
+                  <div className="flex flex-wrap items-center gap-1.5 w-full sm:w-auto">
+                    {categories.map((cat) => (
+                      <button key={cat} onClick={() => setSelectedCategory(cat)}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all capitalize ${
+                          selectedCategory === cat ? 'bg-[#176B45] text-white shadow-xs' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        }`}>{cat}</button>
+                    ))}
+                  </div>
+                </div>
 
-                      <div className="pt-2 border-t border-gray-100 flex items-center justify-between text-xs">
-                        <div>
-                          <span className="text-[10px] text-gray-500 block">Grower:</span>
-                          <strong className="text-gray-800">{prod.farmerName}</strong>
-                        </div>
-                        <button
-                          onClick={() => setTraceProduct(prod)}
-                          className="text-[11px] font-bold text-[#176B45] hover:underline flex items-center space-x-1"
-                        >
-                          <span>Trace Batch</span>
-                          <ExternalLink className="w-3 h-3" />
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                  {filteredProducts.map((prod) => {
+                    const cartItem = state.cart.find(i => i.product.id === prod.id);
+                    const isWishlisted = wishlistIds.includes(prod.id);
+                    return (
+                      <div key={prod.id} className="bg-white rounded-2xl border border-[#176B45]/15 overflow-hidden shadow-sm hover:shadow-md transition-all flex flex-col group relative">
+                        <button onClick={() => toggleWishlist(prod.id)}
+                          className={`absolute top-2 right-2 z-10 p-1.5 rounded-full backdrop-blur-xs transition-colors ${isWishlisted ? 'bg-rose-50 text-rose-600' : 'bg-white/80 text-gray-400 hover:text-rose-500'}`}>
+                          <Heart className={`w-4 h-4 ${isWishlisted ? 'fill-current' : ''}`} />
                         </button>
-                      </div>
-
-                      <div className="pt-2 border-t border-gray-100 flex items-center justify-between">
-                        <div>
-                          <span className="text-base font-extrabold text-[#104D35]">₹{prod.price}</span>
-                          <span className="text-[10px] text-gray-500"> / {prod.unit}</span>
+                        <div className="relative h-44 bg-gray-100 overflow-hidden">
+                          <img src={prod.imageUrl} alt={prod.name}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                          <div className="absolute bottom-2 left-2">
+                            <span className="bg-black/60 backdrop-blur-xs text-white font-bold text-[9px] px-2 py-0.5 rounded">{prod.verificationBadge}</span>
+                          </div>
                         </div>
-
-                        {prod.isLockedForCustomers ? (
-                          <div 
-                            className="flex items-center space-x-1.5 px-3 py-1.5 bg-amber-50 text-amber-900 border border-amber-200 rounded-xl text-xs font-bold"
-                            title={prod.lockedReason || 'Reserved for supermarket wholesale'}
-                          >
-                            <Lock className="w-3.5 h-3.5 text-amber-700 shrink-0" />
-                            <span>Locked for B2B</span>
+                        <div className="p-4 flex-1 flex flex-col justify-between space-y-3">
+                          <div className="space-y-1">
+                            <div className="flex items-center justify-between text-[11px] text-[#66736A]">
+                              <span>{prod.category}</span>
+                              <span className="font-semibold text-emerald-800">{prod.unit}</span>
+                            </div>
+                            <h3 className="font-bold text-sm text-[#17231C] leading-snug">{prod.name}</h3>
+                            <p className="text-xs text-[#66736A] line-clamp-2">{prod.description}</p>
                           </div>
-                        ) : cartItem ? (
-                          <div className="flex items-center space-x-2 bg-[#F0F7F0] px-2 py-1 rounded-xl border border-[#DCECDC]">
-                            <button
-                              onClick={() => store.updateCartQuantity(prod.id, cartItem.quantity - 1)}
-                              className="p-1 text-[#176B45] hover:bg-[#DCECDC] rounded"
-                            >
-                              <Minus className="w-3.5 h-3.5" />
-                            </button>
-                            <span className="font-bold text-xs text-[#176B45]">{cartItem.quantity}</span>
-                            <button
-                              onClick={() => store.updateCartQuantity(prod.id, cartItem.quantity + 1)}
-                              className="p-1 text-[#176B45] hover:bg-[#DCECDC] rounded"
-                            >
-                              <Plus className="w-3.5 h-3.5" />
+                          <div className="pt-2 border-t border-gray-100 flex items-center justify-between text-xs">
+                            <div>
+                              <span className="text-[10px] text-gray-500 block">Grower:</span>
+                              <strong className="text-gray-800">{prod.farmerName}</strong>
+                            </div>
+                            <button onClick={() => setTraceProduct(prod)} className="text-[11px] font-bold text-[#176B45] hover:underline flex items-center space-x-1">
+                              <span>Trace Batch</span><ExternalLink className="w-3 h-3" />
                             </button>
                           </div>
-                        ) : (
-                          <button
-                            onClick={() => store.addToCart(prod, 1)}
-                            className="px-3.5 py-1.5 bg-[#176B45] hover:bg-[#104D35] text-white text-xs font-bold rounded-xl shadow-xs transition-all flex items-center space-x-1"
-                          >
-                            <ShoppingBag className="w-3.5 h-3.5" />
-                            <span>Add</span>
-                          </button>
-                        )}
+                          <div className="pt-2 border-t border-gray-100 flex items-center justify-between">
+                            <div>
+                              <span className="text-base font-extrabold text-[#104D35]">₹{prod.price}</span>
+                              <span className="text-[10px] text-gray-500"> / {prod.unit}</span>
+                            </div>
+                            {cartItem ? (
+                              <div className="flex items-center space-x-2 bg-[#F0F7F0] px-2 py-1 rounded-xl border border-[#DCECDC]">
+                                <button onClick={() => store.updateCartQuantity(prod.id, cartItem.quantity - 1)} className="p-1 text-[#176B45] hover:bg-[#DCECDC] rounded"><Minus className="w-3.5 h-3.5" /></button>
+                                <span className="font-bold text-xs text-[#176B45]">{cartItem.quantity}</span>
+                                <button onClick={() => store.updateCartQuantity(prod.id, cartItem.quantity + 1)} className="p-1 text-[#176B45] hover:bg-[#DCECDC] rounded"><Plus className="w-3.5 h-3.5" /></button>
+                              </div>
+                            ) : (
+                              <button onClick={() => store.addToCart(prod, 1)}
+                                className="px-3.5 py-1.5 bg-[#176B45] hover:bg-[#104D35] text-white text-xs font-bold rounded-xl shadow-xs transition-all flex items-center space-x-1">
+                                <ShoppingBag className="w-3.5 h-3.5" /><span>Add</span>
+                              </button>
+                            )}
+                          </div>
+                        </div>
                       </div>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+
+            {/* ══ BULK BUYER VIEW ══ */}
+            {customerType === 'bulk' && (
+              <div className="space-y-5">
+                <div className="bg-gradient-to-r from-[#104D35] via-[#176B45] to-[#104D35] rounded-3xl p-6 sm:p-7 text-white shadow-xl">
+                  <div className="max-w-2xl space-y-2">
+                    <div className="inline-flex items-center space-x-2 bg-white/15 px-3 py-1 rounded-full text-xs font-semibold">
+                      <Building2 className="w-4 h-4 text-amber-300" />
+                      <span>Bulk B2B Procurement — Farm-Direct, Best Rates, Weekly Supply</span>
+                    </div>
+                    <h1 className="text-xl sm:text-2xl font-extrabold font-display leading-tight">
+                      Wholesale Organic Produce for Your Business.
+                    </h1>
+                    <p className="text-xs text-emerald-100 leading-relaxed">
+                      Hotels, restaurants, caterers & institutions get verified bulk supply at contract pricing. Zero middlemen. Fresh every week.
+                    </p>
+                  </div>
+                </div>
+
+                {!selectedBulkType ? (
+                  <div className="space-y-3">
+                    <div>
+                      <h2 className="text-sm font-bold text-[#17231C]">Select Your Business Type</h2>
+                      <p className="text-xs text-gray-500 mt-0.5">We'll customise pricing & minimum order quantities for you.</p>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {bulkBuyerTypes.map((type) => {
+                        const Icon = type.icon;
+                        return (
+                          <button key={type.id} onClick={() => setSelectedBulkType(type.id)}
+                            className={`flex flex-col items-start gap-2 p-5 rounded-2xl border-2 text-left transition-all hover:shadow-md hover:scale-[1.02] ${type.color}`}>
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-xl bg-white/60 flex items-center justify-center">
+                                <Icon className="w-5 h-5" />
+                              </div>
+                              <span className="font-bold text-sm">{type.label}</span>
+                            </div>
+                            <p className="text-[11px] opacity-80 font-medium">{type.desc}</p>
+                            <span className="text-[10px] font-bold bg-white/50 px-2 py-0.5 rounded-full">Click to place bulk order →</span>
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
-                );
-              })}
-            </div>
+                ) : (
+                  <div className="space-y-5">
+                    <button onClick={() => { setSelectedBulkType(null); setBulkQuoteSubmitted(false); }}
+                      className="text-xs font-semibold text-[#176B45] hover:underline flex items-center gap-1">
+                      ← Back to Business Type Selection
+                    </button>
+
+                    {bulkQuoteSubmitted ? (
+                      <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-8 text-center space-y-4">
+                        <div className="w-16 h-16 rounded-full bg-emerald-100 text-[#176B45] flex items-center justify-center mx-auto">
+                          <CheckCircle2 className="w-10 h-10" />
+                        </div>
+                        <div>
+                          <h3 className="text-base font-bold text-[#17231C]">Bulk Quote Request Received!</h3>
+                          <p className="text-xs text-gray-600 mt-1">Our B2B team will call <strong>{bulkContactPhone}</strong> within 2 business hours with custom pricing and a supply agreement.</p>
+                        </div>
+                        <div className="bg-white rounded-xl p-4 text-xs text-left space-y-1 border border-emerald-100">
+                          <p><strong>Business:</strong> {bulkBusinessName}</p>
+                          <p><strong>Contact:</strong> {bulkContactName} — {bulkContactPhone}</p>
+                          <p><strong>Type:</strong> {bulkBuyerTypes.find(b => b.id === selectedBulkType)?.label}</p>
+                        </div>
+                        <button onClick={() => { setBulkQuoteSubmitted(false); setSelectedBulkType(null); setBulkQty({}); setBulkBusinessName(''); setBulkContactName(''); setBulkContactPhone(''); }}
+                          className="px-5 py-2 bg-[#176B45] text-white font-bold text-xs rounded-xl">
+                          Place Another Quote
+                        </button>
+                      </div>
+                    ) : (
+                      <form onSubmit={(e) => { e.preventDefault(); setBulkQuoteSubmitted(true); }} className="space-y-5">
+                        <div className="bg-white rounded-2xl border border-[#176B45]/15 p-5 space-y-4">
+                          <h3 className="font-bold text-sm text-[#17231C] flex items-center gap-2">
+                            <FileText className="w-4 h-4 text-[#176B45]" /> Business Details
+                          </h3>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                              <label className="block text-xs font-semibold text-[#17231C] mb-1">Business / Restaurant Name *</label>
+                              <input required value={bulkBusinessName} onChange={e => setBulkBusinessName(e.target.value)}
+                                placeholder="e.g. The Grand Hotel Mumbai"
+                                className="w-full text-xs rounded-xl border border-gray-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#176B45]" />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-semibold text-[#17231C] mb-1">Contact Person Name *</label>
+                              <input required value={bulkContactName} onChange={e => setBulkContactName(e.target.value)}
+                                placeholder="Purchase Manager / Chef Name"
+                                className="w-full text-xs rounded-xl border border-gray-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#176B45]" />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-semibold text-[#17231C] mb-1">Phone / WhatsApp *</label>
+                              <input required type="tel" value={bulkContactPhone} onChange={e => setBulkContactPhone(e.target.value)}
+                                placeholder="+91 98XXX XXXXX"
+                                className="w-full text-xs rounded-xl border border-gray-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#176B45]" />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-semibold text-[#17231C] mb-1">Supply Frequency</label>
+                              <select className="w-full text-xs rounded-xl border border-gray-200 px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-[#176B45]">
+                                <option>Daily</option>
+                                <option>Every 2 Days</option>
+                                <option>Weekly</option>
+                                <option>Bi-weekly</option>
+                                <option>Monthly Contract</option>
+                              </select>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="bg-white rounded-2xl border border-[#176B45]/15 p-5 space-y-4">
+                          <h3 className="font-bold text-sm text-[#17231C] flex items-center gap-2">
+                            <ShoppingBag className="w-4 h-4 text-[#176B45]" /> Select Products & Quantity (kg)
+                          </h3>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            {state.products.map(prod => (
+                              <div key={prod.id} className="flex items-center justify-between p-3 rounded-xl border border-gray-100 bg-[#FAF8F0]">
+                                <div className="flex items-center gap-2">
+                                  <img src={prod.imageUrl} alt={prod.name} className="w-10 h-10 rounded-lg object-cover" />
+                                  <div>
+                                    <p className="text-xs font-bold text-[#17231C]">{prod.name}</p>
+                                    <p className="text-[10px] text-emerald-700 font-semibold">₹{prod.price}/{prod.unit} · Bulk rate negotiable</p>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                  <button type="button"
+                                    onClick={() => setBulkQty(q => ({ ...q, [prod.id]: Math.max(0, (q[prod.id] || 0) - 10) }))}
+                                    className="w-6 h-6 rounded-lg bg-gray-200 text-gray-700 font-bold flex items-center justify-center hover:bg-gray-300">
+                                    <Minus className="w-3 h-3" />
+                                  </button>
+                                  <span className="w-12 text-center text-xs font-bold text-[#176B45]">{bulkQty[prod.id] || 0} kg</span>
+                                  <button type="button"
+                                    onClick={() => setBulkQty(q => ({ ...q, [prod.id]: (q[prod.id] || 0) + 10 }))}
+                                    className="w-6 h-6 rounded-lg bg-[#176B45] text-white font-bold flex items-center justify-center hover:bg-[#104D35]">
+                                    <Plus className="w-3 h-3" />
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                          <p className="text-[10px] text-gray-500">* Quantities increase in steps of 10 kg. Final pricing confirmed by our B2B team.</p>
+                        </div>
+
+                        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-[#FAF8F0] border border-[#176B45]/15 rounded-2xl p-4">
+                          <div className="text-xs text-[#17231C]">
+                            <p className="font-bold">Total Requested: {Object.values(bulkQty).reduce((a, b) => a + b, 0)} kg</p>
+                            <p className="text-gray-500 mt-0.5">Our team will confirm bulk pricing within 2 hours via call/WhatsApp</p>
+                          </div>
+                          <button type="submit"
+                            className="px-6 py-2.5 bg-[#176B45] hover:bg-[#104D35] text-white text-xs font-bold rounded-xl shadow-md flex items-center gap-2 transition-all">
+                            <PhoneCall className="w-4 h-4" />
+                            Request Bulk Quote
+                          </button>
+                        </div>
+                      </form>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
           </div>
         )}
 
