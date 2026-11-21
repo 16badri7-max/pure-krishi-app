@@ -99,7 +99,7 @@ export function App() {
                 <OverviewView
                   onNavigate={(v) => {
                     if (v === 'ai_agronomy') setIsAIOpen(true);
-                    else setAdminView(v);
+                    else setAdminView(v as import('./components/admin/AdminSidebar').AdminViewType);
                   }}
                 />
               )}

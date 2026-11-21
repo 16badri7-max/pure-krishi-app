@@ -264,7 +264,7 @@ export const INITIAL_BUYER_REQUIREMENTS: BuyerRequirement[] = [
     deliveryLocation: 'Reliance Agro Logistics Hub, Ghansoli, Navi Mumbai',
     additionalInstructions: 'Palletized delivery, temperature controlled below 14°C.',
     submittedAt: '2025-02-18T14:30:00Z',
-    status: 'Partially Sourced' as any,
+    status: 'Under Review',
     items: [
       {
         id: 'req-item-4',

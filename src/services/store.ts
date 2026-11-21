@@ -366,8 +366,8 @@ class StoreManager {
       const updatedItems = req.items.map(item => {
         if (item.id === allocation.requirementItemId) {
           const currentAlloc = (item.allocatedFarmerQuantity || 0) + allocation.allocatedQuantityKg;
-          const status = currentAlloc >= item.requiredQuantity ? 'Sourced' : 'Partially Sourced';
-          return { ...item, allocatedFarmerQuantity: currentAlloc, status: status as any };
+          const status: 'Sourced' | 'Partially Sourced' = currentAlloc >= item.requiredQuantity ? 'Sourced' : 'Partially Sourced';
+          return { ...item, allocatedFarmerQuantity: currentAlloc, status };
         }
         return item;
       });

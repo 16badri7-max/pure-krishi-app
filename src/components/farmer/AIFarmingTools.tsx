@@ -668,7 +668,7 @@ const MarketPrices: React.FC<{ lang: string; cropName: string }> = ({ lang, crop
 // 7. AI CROP YIELD PREDICTOR
 // ════════════════════════════════════════════════════════════════════════════
 
-const YieldPredictor: React.FC<{ lang: string; crops: any[]; farms: any[] }> = ({ lang, crops, farms }) => {
+const YieldPredictor: React.FC<{ lang: string; crops: { cropName?: string; sowingDate?: string }[]; farms: { cultivatedAreaAcres?: number }[] }> = ({ lang, crops, farms }) => {
   const [form, setForm] = useState({
     cropName: crops[0]?.cropName || 'Desi Organic Tomatoes',
     farmAcres: farms[0]?.cultivatedAreaAcres || 3,
@@ -766,7 +766,7 @@ const YieldPredictor: React.FC<{ lang: string; crops: any[]; farms: any[] }> = (
 // 8. AI SMART FARM MONITORING
 // ════════════════════════════════════════════════════════════════════════════
 
-const FarmMonitoring: React.FC<{ lang: string; crops: any[]; farms: any[] }> = ({ lang, crops, farms }) => {
+const FarmMonitoring: React.FC<{ lang: string; crops: { id: string; cropName?: string; growthStage?: string; healthStatus?: string }[]; farms: { id?: string; farmName?: string }[] }> = ({ lang, crops, farms }) => {
   const [selectedFarm, setSelectedFarm] = useState(farms[0]?.farmName || '');
   const [irrigationLog, setIrrigationLog] = useState('Last irrigated: 2 days ago, 4 hours drip');
   const [result, setResult] = useState<ToolResult | null>(null);
@@ -799,7 +799,7 @@ const FarmMonitoring: React.FC<{ lang: string; crops: any[]; farms: any[] }> = (
               crop.healthStatus === 'Excellent' ? 'text-emerald-600' :
               crop.healthStatus === 'Good' ? 'text-blue-600' : 'text-amber-600'
             }`} />
-            <div className="font-bold text-gray-700 truncate text-[10px]">{crop.cropName.split(' ')[0]}</div>
+            <div className="font-bold text-gray-700 truncate text-[10px]">{(crop.cropName ?? '').split(' ')[0]}</div>
             <div className={`text-[10px] font-semibold ${
               crop.healthStatus === 'Excellent' ? 'text-emerald-600' :
               crop.healthStatus === 'Good' ? 'text-blue-600' : 'text-amber-600'
@@ -818,7 +818,7 @@ const FarmMonitoring: React.FC<{ lang: string; crops: any[]; farms: any[] }> = (
           onChange={e => setSelectedFarm(e.target.value)}
           className="w-full text-xs border border-gray-200 rounded-xl px-3 py-2 bg-white focus:ring-2 focus:ring-[#176B45] focus:outline-none"
         >
-          {farms.map(f => <option key={f.id}>{f.farmName}</option>)}
+          {farms.map((f, fi) => <option key={f.id ?? fi}>{f.farmName}</option>)}
           {farms.length === 0 && <option>No farms registered</option>}
         </select>
       </div>
@@ -988,8 +988,8 @@ interface AIFarmingToolsProps {
   farmerName: string;
   cropName: string;
   location: string;
-  crops: any[];
-  farms: any[];
+  crops: { id: string; cropName?: string; growthStage?: string; healthStatus?: string; sowingDate?: string }[];
+  farms: { farmName?: string; cultivatedAreaAcres?: number }[];
 }
 
 const TOOLS = [

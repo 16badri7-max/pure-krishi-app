@@ -21,7 +21,7 @@ import { MetricCard } from '../common/MetricCard';
 import { Badge } from '../common/Badge';
 
 interface OverviewViewProps {
-  onNavigate: (view: any) => void;
+  onNavigate: (view: string) => void;
 }
 
 export const OverviewView: React.FC<OverviewViewProps> = ({ onNavigate }) => {

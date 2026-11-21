@@ -68,9 +68,9 @@ export const BuyerRequirementsView: React.FC = () => {
     setItems(items.filter((_, idx) => idx !== index));
   };
 
-  const handleItemChange = (index: number, field: string, val: any) => {
+  const handleItemChange = (index: number, field: string, val: string | number) => {
     const updated = [...items];
-    (updated[index] as any)[field] = val;
+    (updated[index] as Record<string, string | number>)[field] = val;
     setItems(updated);
   };
 
