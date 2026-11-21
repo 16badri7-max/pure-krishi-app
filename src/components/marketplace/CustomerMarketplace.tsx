@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, lazy, Suspense } from 'react';
 import { 
   ShoppingBag, 
   Search, 
@@ -25,6 +25,10 @@ import {
   FileText,
   Lock
 } from 'lucide-react';
+
+// Lazy-load 3D sections (heavy — won't block initial render)
+const Hero3DSection = lazy(() => import('./Hero3DSection'));
+const MidSection3D = lazy(() => import('./MidSection3D'));
 import { useStore } from '../../services/useStore';
 import { ProductListing, CustomerOrder, SavedAddress } from '../../types';
 import { Badge } from '../common/Badge';
@@ -231,20 +235,12 @@ export const CustomerMarketplace: React.FC = () => {
             {/* ══ INDIVIDUAL VIEW ══ */}
             {customerType === 'individual' && (
               <>
-                <div className="bg-gradient-to-r from-[#176B45] via-[#104D35] to-[#176B45] rounded-3xl p-6 sm:p-7 text-white shadow-xl relative overflow-hidden">
-                  <div className="max-w-2xl relative z-10 space-y-2">
-                    <div className="inline-flex items-center space-x-2 bg-white/15 px-3 py-1 rounded-full text-xs font-semibold backdrop-blur-sm">
-                      <ShieldCheck className="w-4 h-4 text-emerald-300" />
-                      <span>100% Zero Synthetic Pesticide Residue Tested</span>
-                    </div>
-                    <h1 className="text-xl sm:text-3xl font-extrabold font-display leading-tight">
-                      Pure Organic Harvest, Delivered Farm-Fresh to Your Kitchen.
-                    </h1>
-                    <p className="text-xs text-emerald-100 leading-relaxed">
-                      Every product displays its verifiable batch ID, cultivating farmer, and soil test certificate.
-                    </p>
-                  </div>
-                </div>
+                {/* 3D Hero Section */}
+                <Suspense fallback={
+                  <div className="bg-gradient-to-r from-[#176B45] via-[#104D35] to-[#176B45] rounded-3xl p-8 text-white animate-pulse h-40" />
+                }>
+                  <Hero3DSection onShopNow={() => document.getElementById('product-grid')?.scrollIntoView({ behavior: 'smooth' })} />
+                </Suspense>
 
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-white p-3 rounded-2xl border border-[#176B45]/15 shadow-sm">
                   <div className="relative w-full sm:w-72">
@@ -263,7 +259,29 @@ export const CustomerMarketplace: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                {/* 3D Mid-Section — Orbiting Farm Globe */}
+                <div className="relative bg-gradient-to-br from-emerald-900/80 via-green-900/60 to-teal-900/70 rounded-3xl overflow-hidden border border-emerald-500/20 shadow-xl">
+                  <div className="absolute inset-0 opacity-[0.03]"
+                    style={{ backgroundImage: 'linear-gradient(#4ade80 1px, transparent 1px), linear-gradient(90deg, #4ade80 1px, transparent 1px)', backgroundSize: '32px 32px' }} />
+                  <div className="flex flex-col md:flex-row items-center">
+                    <div className="flex-1 p-6 md:p-8 z-10">
+                      <h2 className="text-2xl font-black text-white mb-2">Farm-to-Fork<br /><span className="text-emerald-400">Ecosystem</span></h2>
+                      <p className="text-emerald-300/70 text-sm mb-4">Every product orbits through verified farmers → organic processing → your doorstep.</p>
+                      <div className="flex flex-wrap gap-2">
+                        {['🌱 Soil-Tested', '🤖 AI-Graded', '🚜 Farmer-Verified', '📦 Fresh Packed'].map((tag) => (
+                          <span key={tag} className="text-xs bg-emerald-500/15 border border-emerald-400/20 text-emerald-300 px-3 py-1 rounded-full font-semibold">{tag}</span>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="w-full md:w-80 h-56 md:h-72">
+                      <Suspense fallback={<div className="w-full h-full flex items-center justify-center text-5xl animate-spin">🌿</div>}>
+                        <MidSection3D />
+                      </Suspense>
+                    </div>
+                  </div>
+                </div>
+
+                <div id="product-grid" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
                   {filteredProducts.map((prod) => {
                     const cartItem = state.cart.find(i => i.product.id === prod.id);
                     const isWishlisted = wishlistIds.includes(prod.id);
