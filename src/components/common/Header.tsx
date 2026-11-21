@@ -18,6 +18,17 @@ interface HeaderProps {
   onLogout?: () => void;
 }
 
+const roleGradient: Record<string, string> = {
+  super_admin: 'from-emerald-700 via-[#104D35] to-emerald-800',
+  operations_admin: 'from-blue-700 via-blue-800 to-indigo-800',
+  buyer: 'from-purple-700 via-purple-800 to-violet-800',
+  farmer: 'from-amber-600 via-orange-700 to-amber-700',
+  expert: 'from-sky-600 via-sky-700 to-blue-700',
+  warehouse_staff: 'from-orange-600 via-orange-700 to-red-700',
+  delivery_partner: 'from-indigo-600 via-indigo-700 to-purple-700',
+  customer: 'from-rose-500 via-pink-600 to-rose-600',
+};
+
 const roleColors: Record<string, string> = {
   super_admin: 'bg-emerald-600',
   operations_admin: 'bg-blue-600',
@@ -68,6 +79,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar, onOpenCart, onL
   const user = state.currentUser;
   const initials = user.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
   const avatarBg = roleColors[user.role] || 'bg-[#104D35]';
+  const headerGradient = roleGradient[user.role] || 'from-[#104D35] to-emerald-800';
 
   const handleReset = () => {
     store.resetToDefault();
@@ -76,7 +88,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar, onOpenCart, onL
 
   return (
     <>
-      <header className="sticky top-0 z-40 bg-white border-b border-gray-100 shadow-sm">
+      <header className={`sticky top-0 z-40 bg-gradient-to-r ${headerGradient} shadow-lg`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16 gap-4">
 
@@ -85,26 +97,26 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar, onOpenCart, onL
               {/* Mobile menu toggle */}
               <button
                 onClick={onToggleSidebar}
-                className="md:hidden p-2 rounded-lg text-gray-500 hover:text-[#176B45] hover:bg-[#F0F7F0] transition-colors"
+                className="md:hidden p-2 rounded-lg text-white/70 hover:text-white hover:bg-white/10 transition-colors"
               >
                 <Menu className="w-5 h-5" />
               </button>
 
               {/* Logo */}
-              <div className="w-9 h-9 rounded-xl overflow-hidden border border-[#DCECDC] shadow-sm shrink-0">
+              <div className="w-9 h-9 rounded-xl overflow-hidden border-2 border-white/30 shadow-md shrink-0">
                 <img src={logoImg} alt="Pure Krishi" className="w-full h-full object-cover" />
               </div>
 
               <div className="hidden sm:block min-w-0">
                 <div className="flex items-center gap-1.5">
-                  <span className="font-extrabold text-lg tracking-tight text-[#104D35] leading-none">
+                  <span className="font-extrabold text-lg tracking-tight text-white leading-none">
                     PURE KRISHI
                   </span>
-                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 leading-none hidden lg:block">
+                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-white/20 text-white/90 leading-none hidden lg:block">
                     DEMAND-FIRST
                   </span>
                 </div>
-                <p className="text-[10px] text-gray-400 font-medium mt-0.5 hidden lg:block">
+                <p className="text-[10px] text-white/60 font-medium mt-0.5 hidden lg:block">
                   AI-Powered Agricultural Platform
                 </p>
               </div>
@@ -117,12 +129,12 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar, onOpenCart, onL
               <div className="relative" ref={notifRef}>
                 <button
                   onClick={() => setIsNotifOpen(v => !v)}
-                  className="relative w-9 h-9 flex items-center justify-center rounded-xl text-gray-500 hover:text-[#176B45] hover:bg-[#F0F7F0] transition-colors"
+                  className="relative w-9 h-9 flex items-center justify-center rounded-xl text-white/80 hover:text-white hover:bg-white/15 transition-colors"
                   title="Notifications"
                 >
                   <Bell className="w-5 h-5" />
                   {unreadNotifs.length > 0 && (
-                    <span className="absolute top-1 right-1 w-2 h-2 bg-amber-500 rounded-full ring-2 ring-white" />
+                    <span className="absolute top-1 right-1 w-2 h-2 bg-amber-400 rounded-full ring-2 ring-white/30" />
                   )}
                 </button>
 
@@ -189,12 +201,12 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar, onOpenCart, onL
               {/* Cart */}
               <button
                 onClick={onOpenCart}
-                className="relative w-9 h-9 flex items-center justify-center rounded-xl text-gray-500 hover:text-[#176B45] hover:bg-[#F0F7F0] transition-colors"
+                className="relative w-9 h-9 flex items-center justify-center rounded-xl text-white/80 hover:text-white hover:bg-white/15 transition-colors"
                 title="Cart"
               >
                 <ShoppingBag className="w-5 h-5" />
                 {cartItemCount > 0 && (
-                  <span className="absolute top-0.5 right-0.5 w-4 h-4 bg-[#176B45] text-white text-[9px] font-bold rounded-full flex items-center justify-center ring-2 ring-white">
+                  <span className="absolute top-0.5 right-0.5 w-4 h-4 bg-amber-400 text-gray-900 text-[9px] font-bold rounded-full flex items-center justify-center ring-2 ring-white/30">
                     {cartItemCount}
                   </span>
                 )}
@@ -203,41 +215,39 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar, onOpenCart, onL
               {/* Reset */}
               <button
                 onClick={() => setShowResetConfirm(true)}
-                className="w-9 h-9 flex items-center justify-center rounded-xl text-gray-400 hover:text-amber-600 hover:bg-amber-50 transition-colors"
+                className="w-9 h-9 flex items-center justify-center rounded-xl text-white/60 hover:text-amber-300 hover:bg-white/10 transition-colors"
                 title="Reset Demo Data"
               >
                 <RotateCcw className="w-4 h-4" />
               </button>
 
               {/* Divider */}
-              <div className="w-px h-6 bg-gray-200 hidden sm:block" />
+              <div className="w-px h-6 bg-white/20 hidden sm:block" />
 
-              {/* Profile pill — click to edit */}
+              {/* Profile pill */}
               <button
                 onClick={() => setIsProfileOpen(true)}
-                className="hidden sm:flex items-center gap-2 pl-1 pr-3 py-1 rounded-xl hover:bg-gray-50 border border-transparent hover:border-gray-200 transition-all group"
+                className="hidden sm:flex items-center gap-2 pl-1 pr-3 py-1 rounded-xl hover:bg-white/10 border border-transparent hover:border-white/20 transition-all group"
                 title="Edit Profile"
               >
-                {/* Avatar */}
-                <div className={`w-8 h-8 rounded-full ${avatarBg} text-white font-bold text-xs flex items-center justify-center shrink-0 overflow-hidden ring-2 ring-white shadow`}>
+                <div className={`w-8 h-8 rounded-full ${avatarBg} text-white font-bold text-xs flex items-center justify-center shrink-0 overflow-hidden ring-2 ring-white/30 shadow`}>
                   {user.avatar ? (
                     <img src={user.avatar} alt="avatar" className="w-full h-full object-cover" />
                   ) : (
                     <span>{initials}</span>
                   )}
                 </div>
-                {/* Name & role */}
                 <div className="text-left min-w-0 hidden md:block">
-                  <p className="text-xs font-bold text-gray-800 leading-none truncate max-w-[100px]">{user.name}</p>
-                  <p className="text-[10px] text-gray-400 mt-0.5 leading-none">{roleLabel[user.role] || user.role}</p>
+                  <p className="text-xs font-bold text-white leading-none truncate max-w-[100px]">{user.name}</p>
+                  <p className="text-[10px] text-white/60 mt-0.5 leading-none">{roleLabel[user.role] || user.role}</p>
                 </div>
-                <Pencil className="w-3 h-3 text-gray-300 group-hover:text-[#176B45] transition-colors hidden md:block" />
+                <Pencil className="w-3 h-3 text-white/30 group-hover:text-white/70 transition-colors hidden md:block" />
               </button>
 
               {/* Mobile avatar only */}
               <button
                 onClick={() => setIsProfileOpen(true)}
-                className={`sm:hidden w-8 h-8 rounded-full ${avatarBg} text-white font-bold text-xs flex items-center justify-center overflow-hidden`}
+                className={`sm:hidden w-8 h-8 rounded-full ${avatarBg} text-white font-bold text-xs flex items-center justify-center overflow-hidden ring-2 ring-white/30`}
               >
                 {user.avatar ? (
                   <img src={user.avatar} alt="avatar" className="w-full h-full object-cover" />
@@ -248,7 +258,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar, onOpenCart, onL
               {onLogout && (
                 <button
                   onClick={onLogout}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-red-50 hover:bg-red-100 text-red-500 hover:text-red-600 border border-red-100 transition-all text-xs font-semibold"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white/80 hover:text-white border border-white/20 transition-all text-xs font-semibold"
                   title="Logout"
                 >
                   <LogOut className="w-3.5 h-3.5" />

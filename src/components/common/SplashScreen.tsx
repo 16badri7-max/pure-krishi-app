@@ -132,13 +132,16 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onDone }) => {
     const t4 = setTimeout(() => setVisibleFeatures([true, true, false]), 1900);
     const t5 = setTimeout(() => setVisibleFeatures([true, true, true]), 2200);
 
-    // Phase 3: Exit
-    const t6 = setTimeout(() => setPhase('exit'), 3800);
-    const t7 = setTimeout(() => setExitReady(true), 4000);
-    const t8 = setTimeout(() => onDone(), 4400);
+    // No auto-advance — user must click "Tap to continue"
 
-    return () => [t1,t2,t3,t4,t5,t6,t7,t8].forEach(clearTimeout);
+    return () => [t1,t2,t3,t4,t5].forEach(clearTimeout);
   }, []);
+
+  const handleContinue = () => {
+    setPhase('exit');
+    setTimeout(() => setExitReady(true), 100);
+    setTimeout(() => onDone(), 500);
+  };
 
   return (
     <div
@@ -222,20 +225,24 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onDone }) => {
         ))}
       </div>
 
-      {/* Tap to continue hint */}
-      <div className={`mt-8 transition-all duration-500 delay-700 ${
-        visibleFeatures[2] && phase !== 'exit' ? 'opacity-60' : 'opacity-0'
+      {/* Tap to continue — WAIT for user click */}
+      <div className={`mt-8 transition-all duration-700 delay-500 ${
+        visibleFeatures[2] && phase !== 'exit' ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'
       }`}>
-        <button onClick={onDone}
-          className="flex flex-col items-center gap-1.5 group">
-          <div className="flex gap-1">
-            {[0,1,2].map(i => (
-              <span key={i} className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-bounce"
-                style={{ animationDelay: `${i * 150}ms` }} />
-            ))}
+        <button onClick={handleContinue}
+          className="flex flex-col items-center gap-2 group cursor-pointer">
+          {/* Glowing pulse ring */}
+          <div className="relative w-14 h-14 flex items-center justify-center">
+            <div className="absolute inset-0 rounded-full bg-emerald-500/20 animate-ping" />
+            <div className="absolute inset-1 rounded-full bg-emerald-500/10 animate-pulse" />
+            <div className="relative w-10 h-10 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center shadow-lg shadow-emerald-500/40 group-hover:scale-110 transition-transform">
+              <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+              </svg>
+            </div>
           </div>
-          <span className="text-emerald-300/70 text-[11px] tracking-widest uppercase group-hover:text-emerald-300 transition-colors">
-            Tap to continue
+          <span className="text-emerald-300 text-xs font-bold tracking-widest uppercase group-hover:text-white transition-colors">
+            Tap to Continue
           </span>
         </button>
       </div>

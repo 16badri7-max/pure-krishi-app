@@ -40,6 +40,18 @@ export function App() {
 
   const role = state.currentUser.role;
 
+  const portalBg: Record<string, string> = {
+    super_admin:      'bg-gradient-to-br from-emerald-50 via-green-50 to-teal-50',
+    operations_admin: 'bg-gradient-to-br from-blue-50 via-indigo-50 to-sky-50',
+    buyer:            'bg-gradient-to-br from-purple-50 via-violet-50 to-indigo-50',
+    farmer:           'bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50',
+    expert:           'bg-gradient-to-br from-sky-50 via-cyan-50 to-blue-50',
+    warehouse_staff:  'bg-gradient-to-br from-orange-50 via-amber-50 to-red-50',
+    delivery_partner: 'bg-gradient-to-br from-indigo-50 via-purple-50 to-blue-50',
+    customer:         'bg-gradient-to-br from-rose-50 via-pink-50 to-red-50',
+  };
+  const bgClass = portalBg[role] ?? 'bg-[#F7F8F5]';
+
   const handleOpenAIWithContext = (context?: { cropName: string; growthStage: string }) => {
     setAiCropContext(context);
     setIsAIOpen(true);
@@ -56,7 +68,7 @@ export function App() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F7F8F5] text-[#17231C] flex flex-col font-sans">
+    <div className={`min-h-screen ${bgClass} text-[#17231C] flex flex-col font-sans transition-colors duration-700`}>
 
       {/* Sticky Header */}
       <Header

@@ -224,11 +224,12 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
   const [financeUnlocked, setFinanceUnlocked] = useState(false);
 
   type NavItem = { id: string; label: string; icon: React.ComponentType<{ className?: string }>; badge?: string };
-  type NavSection = { group: string; color?: string; locked?: boolean; items: NavItem[] };
+  type NavSection = { group: string; color?: string; bgTint?: string; locked?: boolean; items: NavItem[] };
 
   const navSections: NavSection[] = [
     {
       group: '📊 MAIN DASHBOARD',
+      bgTint: 'bg-emerald-50/60',
       items: [
         { id: 'overview', label: 'HQ Overview', icon: LayoutDashboard },
       ]
@@ -236,6 +237,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
     {
       group: '🏢 B2B BUSINESS & BUYERS',
       color: 'text-blue-700',
+      bgTint: 'bg-blue-50/60',
       items: [
         { id: 'buyers', label: 'Buyers & Supermarkets', icon: Building2 },
         { id: 'requirements', label: 'Buyer Requirements', icon: FileText },
@@ -245,6 +247,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
     {
       group: '🌾 FARMER CULTIVATION',
       color: 'text-amber-700',
+      bgTint: 'bg-amber-50/60',
       items: [
         { id: 'farmers', label: 'Farmer Management', icon: Tractor },
         { id: 'land', label: 'Land & Farm Discovery', icon: MapPin },
@@ -256,6 +259,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
     {
       group: '🏭 WAREHOUSE & COLD STORAGE',
       color: 'text-purple-700',
+      bgTint: 'bg-purple-50/60',
       items: [
         { id: 'warehouse', label: 'Warehouses & Inventory', icon: Warehouse },
         { id: 'orders', label: 'B2B Purchase Orders', icon: ShoppingCart },
@@ -265,6 +269,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
     {
       group: '💰 FINANCIAL DETAILS',
       color: 'text-rose-700',
+      bgTint: 'bg-rose-50/60',
       locked: true,
       items: [
         { id: 'finance', label: 'Finance & Gross Margin', icon: BadgeIndianRupee },
@@ -274,6 +279,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
     {
       group: '🤖 AI & EXPERT SUPPORT',
       color: 'text-emerald-700',
+      bgTint: 'bg-teal-50/60',
       items: [
         { id: 'ai_agronomy', label: 'AI Agriculture Engine', icon: Bot, badge: 'AI' },
         { id: 'expert_support', label: 'Agronomist Escalations', icon: GraduationCap },
@@ -281,6 +287,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
     },
     {
       group: '⚙️ SYSTEM SETTINGS',
+      bgTint: 'bg-gray-50/80',
       items: [
         { id: 'settings', label: 'Settings & Config', icon: Settings },
       ]
@@ -337,7 +344,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
           </div>
 
           {navSections.map((sec, idx) => (
-            <div key={idx} className="space-y-1">
+            <div key={idx} className={`space-y-1 rounded-xl px-2 py-2 ${sec.bgTint || ''}`}>
               <div className="flex items-center justify-between px-1 mb-1.5">
                 <p className={`text-[10px] font-bold uppercase tracking-wider ${sec.color || 'text-[#66736A]'}`}>
                   {sec.group}
