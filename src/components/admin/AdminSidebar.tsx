@@ -223,7 +223,10 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
   const [pendingView, setPendingView] = useState<AdminViewType | null>(null);
   const [financeUnlocked, setFinanceUnlocked] = useState(false);
 
-  const navSections = [
+  type NavItem = { id: string; label: string; icon: React.ComponentType<{ className?: string }>; badge?: string };
+  type NavSection = { group: string; color?: string; locked?: boolean; items: NavItem[] };
+
+  const navSections: NavSection[] = [
     {
       group: '📊 MAIN DASHBOARD',
       items: [
@@ -377,7 +380,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
                         <span className="truncate">{item.label}</span>
                       </div>
                       <div className="flex items-center gap-1 shrink-0">
-                        {item.badge && (
+                        {('badge' in item) && item.badge && (
                           <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
                             isActive 
                               ? 'bg-white/20 text-white' 

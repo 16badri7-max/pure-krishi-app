@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useStore } from './services/useStore';
 import { Header } from './components/common/Header';
 import { LoginScreen } from './components/common/LoginScreen';
+import { SplashScreen } from './components/common/SplashScreen';
 import { AdminSidebar, AdminViewType } from './components/admin/AdminSidebar';
 import { OverviewView } from './components/admin/OverviewView';
 import { BuyerManagementView } from './components/admin/BuyerManagementView';
@@ -35,6 +36,7 @@ export function App() {
   const [isAIOpen, setIsAIOpen] = useState(false);
   const [aiCropContext, setAiCropContext] = useState<{ cropName: string; growthStage: string } | undefined>(undefined);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [splashDone, setSplashDone] = useState(false);
 
   const role = state.currentUser.role;
 
@@ -43,7 +45,12 @@ export function App() {
     setIsAIOpen(true);
   };
 
-  // Show Login screen first
+  // Show splash screen first
+  if (!splashDone) {
+    return <SplashScreen onDone={() => setSplashDone(true)} />;
+  }
+
+  // Show Login screen
   if (!isLoggedIn) {
     return <LoginScreen onLogin={() => setIsLoggedIn(true)} />;
   }

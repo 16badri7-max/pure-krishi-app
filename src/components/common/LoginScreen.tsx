@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { ChevronRight, Sparkles, ArrowRight, ShieldCheck, Tractor, ShoppingBag, Eye, EyeOff, Phone, Mail, Chrome, KeyRound, LogIn } from 'lucide-react';
+import { ChevronRight, Sparkles, ArrowRight, ShieldCheck, Tractor, ShoppingBag, Eye, EyeOff, Phone, KeyRound, LogIn } from 'lucide-react';
 import { useStore } from '../../services/useStore';
 import { UserRole } from '../../types';
 import logoImg from '../../assets/logo.jpg';
