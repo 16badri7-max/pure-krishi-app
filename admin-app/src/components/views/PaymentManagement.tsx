@@ -1,0 +1,13 @@
+import React from 'react'; import { PageHeader, StatCard } from './shared';
+const payments = [{id:'PAY-9012',order:'ORD-5892',customer:'Priya Sharma',amount:'₹1,240',method:'UPI',status:'Completed',date:'Today 10:22'},{id:'PAY-9011',order:'ORD-5890',customer:"Nature's Basket",amount:'₹18,400',method:'NEFT',status:'Completed',date:'Today 08:00'},{id:'PAY-9010',order:'ORD-5889',customer:'Sunrise Hotel',amount:'₹9,200',method:'Credit Card',status:'Pending',date:'Yesterday'},{id:'PAY-9009',order:'ORD-5888',customer:'Meera Nair',amount:'₹890',method:'Cash on Delivery',status:'Completed',date:'Yesterday'}];
+const sc: Record<string,string> = {Completed:'bg-green-100 text-green-700',Pending:'bg-amber-100 text-amber-700',Failed:'bg-red-100 text-red-700',Refunded:'bg-blue-100 text-blue-700'};
+export const PaymentManagement: React.FC = () => (
+  <div className="space-y-5">
+    <PageHeader title="Payment Management" subtitle="Monitor all transactions and payment processing" icon="💳" color="from-emerald-600 to-teal-700" />
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-4"><StatCard label="Total Revenue" value="₹2.84Cr" sub="+18% this month" /><StatCard label="This Month" value="₹24.8L" /><StatCard label="Pending" value="₹4.2L" /><StatCard label="Refunds" value="₹1.1L" /></div>
+    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+      <div className="px-5 py-4 border-b border-slate-100"><h3 className="font-bold text-slate-800">Recent Transactions</h3></div>
+      <div className="overflow-x-auto"><table className="w-full text-xs"><thead><tr className="bg-slate-50 text-slate-500 uppercase text-[10px]"><th className="px-5 py-3 text-left font-bold">Payment ID</th><th className="px-4 py-3 text-left font-bold">Customer</th><th className="px-4 py-3 text-center font-bold">Amount</th><th className="px-4 py-3 text-center font-bold">Method</th><th className="px-4 py-3 text-center font-bold">Status</th><th className="px-4 py-3 text-left font-bold">Date</th></tr></thead>
+      <tbody className="divide-y divide-slate-50">{payments.map((p,i)=>(<tr key={i} className="hover:bg-emerald-50/40"><td className="px-5 py-3.5 font-bold text-slate-800">{p.id}</td><td className="px-4 py-3.5 text-slate-700">{p.customer}</td><td className="px-4 py-3.5 text-center font-bold text-emerald-700">{p.amount}</td><td className="px-4 py-3.5 text-center text-slate-600">{p.method}</td><td className="px-4 py-3.5 text-center"><span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${sc[p.status]}`}>{p.status}</span></td><td className="px-4 py-3.5 text-slate-500 text-[11px]">{p.date}</td></tr>))}</tbody></table></div></div>
+  </div>
+);
