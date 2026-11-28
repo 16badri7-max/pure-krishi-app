@@ -3,7 +3,6 @@ import {
   Tractor, 
   Wheat, 
   MapPin, 
-  Calendar, 
   Plus, 
   Bot, 
   BadgeIndianRupee, 
@@ -11,27 +10,23 @@ import {
   Clock, 
   Building2,
   Sparkles,
-  Droplets,
-  Layers,
-  FileText,
-  CreditCard,
   ShoppingBag,
   Bell,
-  HelpCircle,
   Settings,
   Receipt,
-  Camera,
-  ChevronRight,
-  TrendingUp,
-  AlertTriangle,
   UserCheck,
-  Cpu
+  Cpu,
+  Package,
+  GraduationCap,
+  ShieldCheck,
+  Boxes
 } from 'lucide-react';
 import { useStore } from '../../services/useStore';
+import { centralApi } from '../../lib/centralApi';
 import { Badge } from '../common/Badge';
 import { Modal } from '../common/Modal';
 import { MetricCard } from '../common/MetricCard';
-import { CropRecord, HarvestBatch, Farm, FarmerExpense } from '../../types';
+import { CropRecord, HarvestBatch, Farm, FarmerExpense, ProductListing } from '../../types';
 import { AIFarmingTools } from './AIFarmingTools';
 
 export type FarmerNav = 
@@ -39,6 +34,9 @@ export type FarmerNav =
   | 'profile'
   | 'farms'
   | 'crops'
+  | 'product_submissions'
+  | 'stock_updates'
+  | 'assigned_orders'
   | 'buyer_demand'
   | 'harvest'
   | 'earnings'
@@ -70,6 +68,59 @@ export const FarmerPortal: React.FC<FarmerPortalProps> = ({ onOpenAI }) => {
   const farmerBatches = state.harvestBatches.filter(b => b.farmerId === currentFarmer.id);
   const farmerExpenses = state.farmerExpenses.filter(e => e.farmerId === currentFarmer.id);
   const farmerNotifs = state.notifications.filter(n => n.recipientRole === 'farmer' || n.recipientRole === 'all');
+  const farmerSubmissions = state.productSubmissions.filter(
+    s => s.farmerId === currentFarmer.id || s.farmerName === currentFarmer.name
+  );
+  const farmerStockSubs = state.stockSubmissions.filter(
+    s => s.farmerId === currentFarmer.id || s.farmerName === currentFarmer.name
+  );
+  const farmerExpertCases = state.expertReviews.filter(
+    e => e.farmerId === currentFarmer.id || e.farmerName === currentFarmer.name
+  );
+  const farmerFulfilmentOrders = state.customerOrders
+    .map(ord => ({
+      orderId: ord.id,
+      status: ord.status,
+      orderDate: ord.orderDate,
+      deliverySlot: ord.deliverySlot,
+      items: ord.items.filter(
+        it => it.product.farmerId === currentFarmer.id || it.product.farmerName === currentFarmer.name
+      ),
+    }))
+    .filter(o => o.items.length > 0);
+  const totalFarmerOrderSales = farmerFulfilmentOrders.reduce(
+    (sum, o) => sum + o.items.reduce((s, it) => s + it.product.price * it.quantity, 0),
+    0
+  );
+
+  // Farmer Product Submission Form
+  const [subNotice, setSubNotice] = useState<string | null>(null);
+  const [prodSubForm, setProdSubForm] = useState(() => ({
+    submissionType: 'new_product' as 'new_product' | 'price_change' | 'description_update',
+    targetProductId: '',
+    productName: '',
+    category: 'Vegetables' as ProductListing['category'],
+    proposedPrice: 60,
+    unit: '1 kg pack',
+    proposedQuantity: 150,
+    harvestDate: new Date().toISOString().split('T')[0],
+    organicCertified: true,
+    description: '',
+    imageUrl: 'https://images.unsplash.com/photo-1592924357228-91a4daadcfea?auto=format&fit=crop&w=600&q=80',
+    farmingNotes: '',
+  }));
+
+  // Farmer Stock Submission Form
+  const [stockSubForm, setStockSubForm] = useState(() => ({
+    productName: state.products.find(p => p.farmerName === currentFarmer.name)?.name || 'Desi Organic Tomatoes',
+    productId: state.products.find(p => p.farmerName === currentFarmer.name)?.id || '',
+    warehouseId: state.warehouses[0]?.id || '',
+    submittedQuantity: 200,
+    unit: 'kg',
+    harvestDate: new Date().toISOString().split('T')[0],
+    expectedGrade: 'Grade A Premium',
+    notes: '',
+  }));
 
   // Real Supermarket requirements that match the farmer's registered crops!
   const matchingDemands = state.requirements.flatMap(r => 
@@ -103,7 +154,7 @@ export const FarmerPortal: React.FC<FarmerPortalProps> = ({ onOpenAI }) => {
   });
 
   // New Crop State
-  const [newCrop, setNewCrop] = useState({
+  const [newCrop, setNewCrop] = useState(() => ({
     farmId: farmerFarms[0]?.id || '',
     cropName: 'Desi Organic Tomatoes (Heirloom)',
     variety: 'Abhinav Bio-Certified',
@@ -114,7 +165,7 @@ export const FarmerPortal: React.FC<FarmerPortalProps> = ({ onOpenAI }) => {
     expectedYieldKg: 10000,
     growthStage: 'Vegetative' as CropRecord['growthStage'],
     healthStatus: 'Excellent' as CropRecord['healthStatus'],
-  });
+  }));
 
   // Harvest State
   const [harvestForm, setHarvestForm] = useState({
@@ -128,12 +179,12 @@ export const FarmerPortal: React.FC<FarmerPortalProps> = ({ onOpenAI }) => {
   });
 
   // Expense State
-  const [expenseForm, setExpenseForm] = useState({
+  const [expenseForm, setExpenseForm] = useState(() => ({
     category: 'Seeds & Saplings' as FarmerExpense['category'],
     amount: 5000,
     description: 'Purchase of bio-fertilizer and vermicompost bags',
     date: new Date().toISOString().split('T')[0],
-  });
+  }));
 
   const handleCreateFarm = (e: React.FormEvent) => {
     e.preventDefault();
@@ -188,14 +239,67 @@ export const FarmerPortal: React.FC<FarmerPortalProps> = ({ onOpenAI }) => {
     store.farmerCommitDemand(reqItemId, cropRecordId, currentFarmer.id, quantityKg);
   };
 
+  const handleSubmitProductForAdmin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await centralApi.submitProductForApproval({
+        farmerId: currentFarmer.id,
+        farmerName: currentFarmer.name,
+        farmId: farmerFarms[0]?.id,
+        submissionType: prodSubForm.submissionType,
+        targetProductId: prodSubForm.targetProductId || undefined,
+        productName: prodSubForm.productName.trim(),
+        category: prodSubForm.category,
+        description: prodSubForm.description.trim(),
+        images: [prodSubForm.imageUrl],
+        proposedPrice: Number(prodSubForm.proposedPrice),
+        unit: prodSubForm.unit,
+        proposedQuantity: Number(prodSubForm.proposedQuantity),
+        harvestDate: prodSubForm.harvestDate,
+        organicCertified: prodSubForm.organicCertified,
+        farmingNotes: prodSubForm.farmingNotes.trim(),
+      });
+      setSubNotice('Product submission sent to Admin for review. It will go live in the Customer Marketplace once Admin approves it.');
+      setProdSubForm(p => ({ ...p, productName: '', description: '', farmingNotes: '', targetProductId: '' }));
+    } catch (err) {
+      setSubNotice(err instanceof Error ? err.message : 'Submission failed');
+    }
+  };
+
+  const handleSubmitStockForAdmin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await centralApi.submitStockForApproval({
+        farmerId: currentFarmer.id,
+        farmerName: currentFarmer.name,
+        productId: stockSubForm.productId || undefined,
+        warehouseId: stockSubForm.warehouseId || undefined,
+        productName: stockSubForm.productName.trim(),
+        submittedQuantity: Number(stockSubForm.submittedQuantity),
+        unit: stockSubForm.unit,
+        harvestDate: stockSubForm.harvestDate,
+        expectedGrade: stockSubForm.expectedGrade,
+        notes: stockSubForm.notes.trim(),
+      });
+      setSubNotice('Stock availability submission sent to Admin for verification before inventory update.');
+      setStockSubForm(s => ({ ...s, notes: '' }));
+    } catch (err) {
+      setSubNotice(err instanceof Error ? err.message : 'Stock submission failed');
+    }
+  };
+
   const navItems = [
     { id: 'dashboard', label: 'Farmer Dashboard', icon: Tractor },
+    { id: 'product_submissions', label: 'Submit Products', icon: Package, badge: farmerSubmissions.length },
+    { id: 'stock_updates', label: 'Submit Stock Update', icon: Boxes, badge: farmerStockSubs.length },
+    { id: 'assigned_orders', label: 'Fulfilment Orders', icon: ShoppingBag, badge: farmerFulfilmentOrders.length },
     { id: 'ai_tools', label: '🤖 AI Farming Tools', icon: Cpu, badge: 9 },
+    { id: 'expert_support', label: 'Expert Support', icon: GraduationCap, badge: farmerExpertCases.length },
     { id: 'farms', label: 'My Farms & Land', icon: MapPin, badge: farmerFarms.length },
     { id: 'crops', label: 'Crop Management', icon: Wheat, badge: farmerCrops.length },
     { id: 'buyer_demand', label: 'Matching Supermarket Demand', icon: Building2, badge: matchingDemands.length },
     { id: 'harvest', label: 'Harvest Log', icon: Wheat, badge: farmerBatches.length },
-    { id: 'earnings', label: 'Earnings & Payments', icon: BadgeIndianRupee },
+    { id: 'earnings', label: 'Sales & Earnings', icon: BadgeIndianRupee },
     { id: 'expenses', label: 'Farm Expenses', icon: Receipt, badge: farmerExpenses.length },
     { id: 'notifications', label: 'Farmer Alerts', icon: Bell, badge: farmerNotifs.filter(n => !n.isRead).length },
     { id: 'profile', label: 'My Profile', icon: UserCheck },
@@ -364,6 +468,326 @@ export const FarmerPortal: React.FC<FarmerPortalProps> = ({ onOpenAI }) => {
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {/* Navigation: Agricultural Product Submissions (Workflow 1) */}
+        {activeNav === 'product_submissions' && (
+          <div className="space-y-5">
+            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-start gap-3 text-xs text-amber-900">
+              <ShieldCheck className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+              <div>
+                <strong>Admin Approval Governance:</strong> You can submit new products or request price/description changes here. Only Admin can review, approve, and publish items to the Customer Marketplace.
+              </div>
+            </div>
+
+            {subNotice && (
+              <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs font-semibold text-emerald-800 flex justify-between items-center">
+                <span>{subNotice}</span>
+                <button onClick={() => setSubNotice(null)} className="underline ml-3">Dismiss</button>
+              </div>
+            )}
+
+            <form onSubmit={handleSubmitProductForAdmin} className="bg-white rounded-2xl p-5 border border-[#176B45]/15 shadow-sm space-y-4 text-xs">
+              <h2 className="text-base font-bold text-[#17231C]">Submit Agricultural Product or Change Request</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold mb-1">Submission Type</label>
+                  <select
+                    value={prodSubForm.submissionType}
+                    onChange={e => setProdSubForm(f => ({ ...f, submissionType: e.target.value as typeof f.submissionType }))}
+                    className="w-full rounded-xl border border-gray-200 px-3 py-2 bg-white"
+                  >
+                    <option value="new_product">New Agricultural Product</option>
+                    <option value="price_change">Price Change Request</option>
+                    <option value="description_update">Description Update Request</option>
+                  </select>
+                </div>
+                {prodSubForm.submissionType !== 'new_product' && (
+                  <div>
+                    <label className="block font-semibold mb-1">Select Existing Product</label>
+                    <select
+                      value={prodSubForm.targetProductId}
+                      onChange={e => {
+                        const prod = state.products.find(p => p.id === e.target.value);
+                        setProdSubForm(f => ({
+                          ...f,
+                          targetProductId: e.target.value,
+                          productName: prod?.name || f.productName,
+                          category: prod?.category || f.category,
+                          proposedPrice: prod?.price || f.proposedPrice,
+                          unit: prod?.unit || f.unit,
+                          description: prod?.description || f.description,
+                        }));
+                      }}
+                      className="w-full rounded-xl border border-gray-200 px-3 py-2 bg-white"
+                    >
+                      <option value="">Choose your product...</option>
+                      {state.products
+                        .filter(p => p.farmerName === currentFarmer.name || p.farmerId === currentFarmer.id)
+                        .map(p => (
+                          <option key={p.id} value={p.id}>{p.name} (Current: ₹{p.price})</option>
+                        ))}
+                    </select>
+                  </div>
+                )}
+                <div>
+                  <label className="block font-semibold mb-1">Product Name *</label>
+                  <input
+                    required
+                    value={prodSubForm.productName}
+                    onChange={e => setProdSubForm(f => ({ ...f, productName: e.target.value }))}
+                    placeholder="e.g. Organic Nashik Strawberries"
+                    className="w-full rounded-xl border border-gray-200 px-3 py-2"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold mb-1">Category *</label>
+                  <select
+                    value={prodSubForm.category}
+                    onChange={e => setProdSubForm(f => ({ ...f, category: e.target.value as ProductListing['category'] }))}
+                    className="w-full rounded-xl border border-gray-200 px-3 py-2 bg-white"
+                  >
+                    {['Vegetables', 'Fruits', 'Grains', 'Pulses', 'Dry fruits', 'Spices'].map(c => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block font-semibold mb-1">Proposed Price (₹) *</label>
+                  <input
+                    required
+                    type="number"
+                    min={1}
+                    value={prodSubForm.proposedPrice}
+                    onChange={e => setProdSubForm(f => ({ ...f, proposedPrice: Number(e.target.value) }))}
+                    className="w-full rounded-xl border border-gray-200 px-3 py-2"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block font-semibold mb-1">Quantity *</label>
+                    <input
+                      required
+                      type="number"
+                      min={1}
+                      value={prodSubForm.proposedQuantity}
+                      onChange={e => setProdSubForm(f => ({ ...f, proposedQuantity: Number(e.target.value) }))}
+                      className="w-full rounded-xl border border-gray-200 px-3 py-2"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-semibold mb-1">Unit *</label>
+                    <input
+                      required
+                      value={prodSubForm.unit}
+                      onChange={e => setProdSubForm(f => ({ ...f, unit: e.target.value }))}
+                      className="w-full rounded-xl border border-gray-200 px-3 py-2"
+                    />
+                  </div>
+                </div>
+              </div>
+              <div>
+                <label className="block font-semibold mb-1">Product Description & Cultivation Method *</label>
+                <textarea
+                  required
+                  rows={2}
+                  value={prodSubForm.description}
+                  onChange={e => setProdSubForm(f => ({ ...f, description: e.target.value }))}
+                  placeholder="Describe harvest freshness, soil practice, and organic grading..."
+                  className="w-full rounded-xl border border-gray-200 px-3 py-2"
+                />
+              </div>
+              <button type="submit" className="px-5 py-2.5 bg-[#176B45] hover:bg-[#104D35] text-white font-bold rounded-xl">
+                Submit for Admin Approval
+              </button>
+            </form>
+
+            {/* Submission History & Approval Status */}
+            <div className="bg-white rounded-2xl p-5 border border-[#176B45]/15 shadow-sm space-y-3">
+              <h3 className="text-sm font-bold text-[#17231C]">Product Submission History & Approval Status ({farmerSubmissions.length})</h3>
+              <div className="space-y-2.5">
+                {farmerSubmissions.map(sub => (
+                  <div key={sub.id} className="p-3.5 rounded-xl border border-gray-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <strong className="text-[#17231C]">{sub.productName}</strong>
+                        <Badge variant={sub.status === 'approved' ? 'green' : sub.status === 'rejected' ? 'red' : 'amber'}>
+                          {sub.status.toUpperCase()}
+                        </Badge>
+                      </div>
+                      <p className="text-[11px] text-gray-500 mt-0.5">
+                        {sub.submissionType.replace('_', ' ')} • Proposed ₹{sub.proposedPrice}/{sub.unit} • Qty: {sub.proposedQuantity}
+                      </p>
+                      {sub.adminNotes && (
+                        <p className="text-[11px] text-[#176B45] mt-1 font-medium">Admin Note: {sub.adminNotes}</p>
+                      )}
+                    </div>
+                    <span className="text-[10px] font-mono text-gray-400">{new Date(sub.createdAt).toLocaleString()}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Navigation: Stock Availability Submissions (Workflow 3) */}
+        {activeNav === 'stock_updates' && (
+          <div className="space-y-5">
+            <form onSubmit={handleSubmitStockForAdmin} className="bg-white rounded-2xl p-5 border border-[#176B45]/15 shadow-sm space-y-4 text-xs">
+              <div>
+                <h2 className="text-base font-bold text-[#17231C]">Submit Harvest Stock Availability Update</h2>
+                <p className="text-gray-500 mt-0.5">Stock updates are reviewed by Admin before updating central warehouse & customer inventory.</p>
+              </div>
+              {subNotice && (
+                <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs font-semibold text-emerald-800">{subNotice}</div>
+              )}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold mb-1">Product / Crop Name *</label>
+                  <input
+                    required
+                    value={stockSubForm.productName}
+                    onChange={e => setStockSubForm(s => ({ ...s, productName: e.target.value }))}
+                    className="w-full rounded-xl border border-gray-200 px-3 py-2"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold mb-1">Target Agro-Hub Warehouse</label>
+                  <select
+                    value={stockSubForm.warehouseId}
+                    onChange={e => setStockSubForm(s => ({ ...s, warehouseId: e.target.value }))}
+                    className="w-full rounded-xl border border-gray-200 px-3 py-2 bg-white"
+                  >
+                    {state.warehouses.map(w => (
+                      <option key={w.id} value={w.id}>{w.name} ({w.city})</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block font-semibold mb-1">Additional Quantity *</label>
+                  <input
+                    required
+                    type="number"
+                    min={1}
+                    value={stockSubForm.submittedQuantity}
+                    onChange={e => setStockSubForm(s => ({ ...s, submittedQuantity: Number(e.target.value) }))}
+                    className="w-full rounded-xl border border-gray-200 px-3 py-2"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold mb-1">Harvest Date *</label>
+                  <input
+                    required
+                    type="date"
+                    value={stockSubForm.harvestDate}
+                    onChange={e => setStockSubForm(s => ({ ...s, harvestDate: e.target.value }))}
+                    className="w-full rounded-xl border border-gray-200 px-3 py-2"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block font-semibold mb-1">Notes</label>
+                <input
+                  value={stockSubForm.notes}
+                  onChange={e => setStockSubForm(s => ({ ...s, notes: e.target.value }))}
+                  placeholder="Harvest lot notes, grade, cold storage info..."
+                  className="w-full rounded-xl border border-gray-200 px-3 py-2"
+                />
+              </div>
+              <button type="submit" className="px-5 py-2.5 bg-[#176B45] hover:bg-[#104D35] text-white font-bold rounded-xl">
+                Submit Stock Update for Admin Approval
+              </button>
+            </form>
+
+            <div className="bg-white rounded-2xl p-5 border border-[#176B45]/15 shadow-sm space-y-3">
+              <h3 className="text-sm font-bold text-[#17231C]">Stock Submission History ({farmerStockSubs.length})</h3>
+              {farmerStockSubs.map(stk => (
+                <div key={stk.id} className="p-3.5 rounded-xl border border-gray-200 flex justify-between items-center text-xs">
+                  <div>
+                    <strong className="text-[#17231C]">{stk.productName}</strong>
+                    <p className="text-[11px] text-gray-500">+{stk.submittedQuantity} {stk.unit} • Harvest {stk.harvestDate}</p>
+                    {stk.adminNotes && <p className="text-[11px] text-[#176B45]">Admin: {stk.adminNotes}</p>}
+                  </div>
+                  <Badge variant={stk.status === 'approved' ? 'green' : stk.status === 'rejected' ? 'red' : 'amber'}>
+                    {stk.status.toUpperCase()}
+                  </Badge>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Navigation: Relevant Fulfilment Orders (Workflow 2) */}
+        {activeNav === 'assigned_orders' && (
+          <div className="bg-white rounded-2xl p-5 border border-[#176B45]/15 shadow-sm space-y-4">
+            <div className="flex justify-between items-center pb-3 border-b border-gray-100">
+              <div>
+                <h2 className="text-base font-bold text-[#17231C]">Assigned Fulfilment Orders</h2>
+                <p className="text-xs text-[#66736A]">
+                  Showing only relevant product fulfilment allocations coordinated via Central Admin (customer private contact data hidden).
+                </p>
+              </div>
+              <Badge variant="green">Total Sales: ₹{totalFarmerOrderSales.toLocaleString()}</Badge>
+            </div>
+            {farmerFulfilmentOrders.length === 0 ? (
+              <p className="text-xs text-gray-400 py-8 text-center">No customer fulfilment items currently assigned to you.</p>
+            ) : (
+              <div className="space-y-3">
+                {farmerFulfilmentOrders.map(ord => (
+                  <div key={ord.orderId} className="p-4 rounded-xl bg-[#FAF8F0] border border-[#176B45]/15 space-y-2 text-xs">
+                    <div className="flex justify-between items-center">
+                      <span className="font-mono font-bold text-[#176B45]">{ord.orderId}</span>
+                      <Badge variant={ord.status === 'Delivered' ? 'green' : 'blue'}>{ord.status}</Badge>
+                    </div>
+                    <div className="space-y-1">
+                      {ord.items.map((it, idx) => (
+                        <div key={idx} className="flex justify-between bg-white px-3 py-2 rounded-lg border border-gray-100">
+                          <span className="font-semibold text-[#17231C]">{it.product.name}</span>
+                          <span className="font-bold text-[#104D35]">
+                            {it.quantity} × ₹{it.product.price} = ₹{(it.quantity * it.product.price).toLocaleString()}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Navigation: Agricultural Expert Support */}
+        {activeNav === 'expert_support' && (
+          <div className="bg-white rounded-2xl p-5 border border-[#176B45]/15 shadow-sm space-y-4">
+            <div className="flex justify-between items-center pb-3 border-b border-gray-100">
+              <div>
+                <h2 className="text-base font-bold text-[#17231C]">Agricultural Expert Support & Escalations</h2>
+                <p className="text-xs text-[#66736A]">Verified agronomic advice from Pure Krishi Chief Agronomists.</p>
+              </div>
+              <button
+                onClick={() => onOpenAI({ cropName: farmerCrops[0]?.cropName || 'Tomatoes', growthStage: 'Vegetative' })}
+                className="px-3.5 py-2 bg-[#176B45] text-white text-xs font-bold rounded-xl"
+              >
+                Ask AI / Escalate Issue
+              </button>
+            </div>
+            <div className="space-y-3">
+              {farmerExpertCases.map(c => (
+                <div key={c.id} className="p-4 rounded-xl border border-gray-200 space-y-2 text-xs">
+                  <div className="flex justify-between items-center">
+                    <strong className="text-[#17231C]">{c.cropName} ({c.id})</strong>
+                    <Badge variant={c.status === 'Resolved' ? 'green' : 'amber'}>{c.status}</Badge>
+                  </div>
+                  <p className="text-gray-700"><strong>Query:</strong> {c.question}</p>
+                  {c.expertResponse && (
+                    <p className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-900">
+                      <strong>Chief Agronomist Response:</strong> {c.expertResponse}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
         )}
 

@@ -1,14 +1,9 @@
 import React from 'react';
 import { 
-  BarChart3, 
-  ShieldCheck, 
   Lock, 
   Database, 
-  Terminal, 
   CheckCircle2, 
-  Copy, 
-  Download,
-  AlertCircle
+  Download
 } from 'lucide-react';
 import { useStore } from '../../services/useStore';
 import { isSupabaseConfigured } from '../../lib/supabase';
@@ -17,40 +12,28 @@ import { Badge } from '../common/Badge';
 export const ReportsSettingsView: React.FC = () => {
   const { state } = useStore();
 
-  const auditEvents = [
-    {
-      id: 'AUD-101',
-      action: 'SUPPLY_AGREEMENT_AUTHORIZED',
-      user: 'Rajesh Varma (Super Admin)',
-      entity: 'Supply Agreement agr-301',
-      timestamp: '2025-03-01 16:30:12 IST',
-      status: 'VERIFIED'
-    },
-    {
-      id: 'AUD-102',
-      action: 'QUALITY_INSPECTION_SUBMITTED',
-      user: 'Dr. M. S. Swaminathan (Expert)',
-      entity: 'Harvest Batch BAT-2025-0301 (Grade A Premium)',
-      timestamp: '2025-03-01 15:30:00 IST',
-      status: 'VERIFIED'
-    },
-    {
-      id: 'AUD-103',
-      action: 'DEMAND_ALLOCATION_CONFIRMED',
-      user: 'Operations Admin',
-      entity: '1500 kg Tomatoes to Nature\'s Basket',
-      timestamp: '2025-02-28 11:15:40 IST',
-      status: 'VERIFIED'
-    },
-    {
-      id: 'AUD-104',
-      action: 'NEW_FARM_REGISTERED',
-      user: 'Ramesh Patil',
-      entity: 'Godavari Bio-Dynamic Orchards (14.5 Acres)',
-      timestamp: '2025-02-20 09:20:10 IST',
-      status: 'VERIFIED'
-    }
-  ];
+  const auditEvents = state.auditLogs;
+
+  const handleExportAuditCSV = () => {
+    const headers = ['Audit ID', 'Action', 'Actor', 'Role', 'Entity Type', 'Entity ID', 'Summary', 'Timestamp'];
+    const rows = auditEvents.map(a => [
+      a.id,
+      a.action,
+      `"${a.actorName}"`,
+      a.actorRole,
+      a.entityType,
+      a.entityId,
+      `"${a.summary.replace(/"/g, '""')}"`,
+      a.createdAt,
+    ]);
+    const csv = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const link = document.createElement('a');
+    link.setAttribute('href', encodeURI(csv));
+    link.setAttribute('download', `pure_krishi_audit_report_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   return (
     <div className="space-y-6">
@@ -130,7 +113,13 @@ export const ReportsSettingsView: React.FC = () => {
             </h3>
             <p className="text-xs text-[#66736A]">All contracts, quality grading decisions, and dispatches are stamped with operator IDs.</p>
           </div>
-          <span className="text-xs font-mono text-gray-500">Live Telemetry</span>
+          <button
+            onClick={handleExportAuditCSV}
+            className="px-3 py-1.5 bg-[#176B45] hover:bg-[#104D35] text-white text-xs font-bold rounded-xl flex items-center gap-1.5"
+          >
+            <Download className="w-3.5 h-3.5" />
+            <span>Export Audit CSV</span>
+          </button>
         </div>
 
         <div className="overflow-x-auto">
@@ -139,8 +128,8 @@ export const ReportsSettingsView: React.FC = () => {
               <tr>
                 <th className="px-3 py-2.5">Audit ID</th>
                 <th className="px-3 py-2.5">Action Event</th>
-                <th className="px-3 py-2.5">Responsible User</th>
-                <th className="px-3 py-2.5">Target Business Entity</th>
+                <th className="px-3 py-2.5">Responsible Actor</th>
+                <th className="px-3 py-2.5">Summary & Entity</th>
                 <th className="px-3 py-2.5">Timestamp</th>
                 <th className="px-3 py-2.5">Integrity</th>
               </tr>
@@ -150,13 +139,15 @@ export const ReportsSettingsView: React.FC = () => {
                 <tr key={aud.id} className="hover:bg-gray-50/70 font-mono text-[11px]">
                   <td className="px-3 py-2.5 font-bold text-[#176B45]">{aud.id}</td>
                   <td className="px-3 py-2.5 font-sans font-semibold text-gray-800">{aud.action}</td>
-                  <td className="px-3 py-2.5 font-sans text-gray-700">{aud.user}</td>
-                  <td className="px-3 py-2.5 font-sans text-gray-600">{aud.entity}</td>
-                  <td className="px-3 py-2.5 text-gray-400">{aud.timestamp}</td>
+                  <td className="px-3 py-2.5 font-sans text-gray-700">
+                    {aud.actorName} <span className="text-[10px] text-gray-400">({aud.actorRole})</span>
+                  </td>
+                  <td className="px-3 py-2.5 font-sans text-gray-600">{aud.summary}</td>
+                  <td className="px-3 py-2.5 text-gray-400">{new Date(aud.createdAt).toLocaleString()}</td>
                   <td className="px-3 py-2.5">
                     <span className="text-emerald-700 font-bold flex items-center space-x-1">
                       <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                      <span>{aud.status}</span>
+                      <span>LOGGED</span>
                     </span>
                   </td>
                 </tr>

@@ -13,7 +13,6 @@ import {
   ArrowUpRight,
   ShieldCheck,
   CheckCircle2,
-  Clock,
   Sparkles
 } from 'lucide-react';
 import { useStore } from '../../services/useStore';
@@ -40,6 +39,10 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ onNavigate }) => {
   const pendingOrders = state.b2bOrders.filter(o => o.status !== 'Delivered' && o.status !== 'Completed').length;
   const totalRevenue = state.financials.grossRevenue;
   const pendingFarmerPayments = state.financials.pendingFarmerPayments;
+  const pendingProductSubmissions = state.productSubmissions.filter(s => s.status === 'pending' || s.status === 'under_review').length;
+  const pendingStockSubmissions = state.stockSubmissions.filter(s => s.status === 'pending').length;
+  const lowStockCount = state.products.filter(p => p.availableQuantity <= (state.platformSettings.lowStockThresholdKg || 50)).length;
+  const pendingCustomerOrders = state.customerOrders.filter(o => o.status !== 'Delivered' && o.status !== 'Cancelled').length;
 
   return (
     <div className="space-y-6">
@@ -62,20 +65,63 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ onNavigate }) => {
           </p>
           <div className="mt-5 flex flex-wrap gap-3">
             <button
-              onClick={() => onNavigate('requirements')}
+              onClick={() => onNavigate('products')}
               className="bg-white text-[#104D35] hover:bg-emerald-50 px-4 py-2 rounded-xl font-bold text-xs shadow-md transition-all flex items-center space-x-1.5"
             >
-              <span>View Supermarket Demands</span>
+              <span>Product Approvals ({pendingProductSubmissions})</span>
               <ArrowUpRight className="w-4 h-4" />
             </button>
             <button
-              onClick={() => onNavigate('crop_planning')}
+              onClick={() => onNavigate('orders')}
               className="bg-[#5BA66B] hover:bg-[#458553] text-white px-4 py-2 rounded-xl font-bold text-xs transition-all flex items-center space-x-1.5"
             >
-              <span>Match Demand to Farmers</span>
+              <span>Manage Orders ({pendingOrders + pendingCustomerOrders})</span>
               <CalendarRange className="w-4 h-4" />
             </button>
+            <button
+              onClick={() => onNavigate('analytics')}
+              className="bg-white/15 hover:bg-white/25 text-white border border-white/25 px-4 py-2 rounded-xl font-bold text-xs transition-all flex items-center space-x-1.5"
+            >
+              <span>Live Analytics</span>
+              <TrendingUp className="w-4 h-4" />
+            </button>
           </div>
+        </div>
+      </div>
+
+      {/* Live Ecosystem Quick Summary Strip */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div
+          onClick={() => onNavigate('customers')}
+          className="bg-white rounded-2xl p-4 border border-[#176B45]/15 shadow-sm cursor-pointer hover:border-[#176B45] transition-all"
+        >
+          <span className="text-[11px] font-bold text-[#66736A] uppercase">Registered Customers</span>
+          <div className="text-2xl font-extrabold text-[#17231C] mt-1">{state.customerAccounts.length}</div>
+          <span className="text-[11px] text-emerald-700 font-semibold">{state.customerOrders.length} B2C orders placed</span>
+        </div>
+        <div
+          onClick={() => onNavigate('products')}
+          className="bg-white rounded-2xl p-4 border border-[#176B45]/15 shadow-sm cursor-pointer hover:border-[#176B45] transition-all"
+        >
+          <span className="text-[11px] font-bold text-[#66736A] uppercase">Pending Product Approvals</span>
+          <div className="text-2xl font-extrabold text-amber-700 mt-1">{pendingProductSubmissions}</div>
+          <span className="text-[11px] text-gray-500">{state.products.length} total SKUs in catalogue</span>
+        </div>
+        <div
+          onClick={() => onNavigate('inventory')}
+          className="bg-white rounded-2xl p-4 border border-[#176B45]/15 shadow-sm cursor-pointer hover:border-[#176B45] transition-all"
+        >
+          <span className="text-[11px] font-bold text-[#66736A] uppercase">Stock Submissions / Alerts</span>
+          <div className="text-2xl font-extrabold text-rose-600 mt-1">{pendingStockSubmissions} / {lowStockCount}</div>
+          <span className="text-[11px] text-gray-500">Pending stock • Low-stock alerts</span>
+        </div>
+        <div
+          onClick={() => onNavigate('orders')}
+          className="bg-white rounded-2xl p-4 border border-[#176B45]/15 shadow-sm cursor-pointer hover:border-[#176B45] transition-all"
+        >
+          <span className="text-[11px] font-bold text-[#66736A] uppercase">Pending Customer Orders</span>
+          <div className="text-2xl font-extrabold text-[#104D35] mt-1">{pendingCustomerOrders}</div>
+          <span className="text-[11px] text-emerald-700 font-semibold">Click to coordinate fulfilment</span>
         </div>
       </div>
 

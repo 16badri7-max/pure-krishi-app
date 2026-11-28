@@ -1,131 +1,64 @@
 import React, { useState } from 'react';
+import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { useStore } from './services/useStore';
+import { useAuth } from './lib/auth';
 import { Header } from './components/common/Header';
 import { LoginScreen } from './components/common/LoginScreen';
 import { SplashScreen } from './components/common/SplashScreen';
-import { AdminSidebar, AdminViewType } from './components/admin/AdminSidebar';
-import { OverviewView } from './components/admin/OverviewView';
-import { BuyerManagementView } from './components/admin/BuyerManagementView';
-import { BuyerRequirementsView } from './components/admin/BuyerRequirementsView';
-import { SupplyAgreementsView } from './components/admin/SupplyAgreementsView';
-import { FarmerManagementView } from './components/admin/FarmerManagementView';
-import { LandDiscoveryView } from './components/admin/LandDiscoveryView';
-import { CropPlanningView } from './components/admin/CropPlanningView';
-import { HarvestManagementView } from './components/admin/HarvestManagementView';
-import { QualityVerificationView } from './components/admin/QualityVerificationView';
-import { WarehouseInventoryView } from './components/admin/WarehouseInventoryView';
-import { OrdersLogisticsView } from './components/admin/OrdersLogisticsView';
-import { FinancePaymentsView } from './components/admin/FinancePaymentsView';
-import { ReportsSettingsView } from './components/admin/ReportsSettingsView';
-
 import { OperationsPortal } from './components/operations/OperationsPortal';
 import { BuyerPortal } from './components/buyer/BuyerPortal';
-import { FarmerPortal } from './components/farmer/FarmerPortal';
 import { ExpertPortal } from './components/expert/ExpertPortal';
 import { WarehousePortal } from './components/warehouse/WarehousePortal';
 import { DeliveryPortal } from './components/delivery/DeliveryPortal';
 import { CustomerMarketplace } from './components/marketplace/CustomerMarketplace';
-
 import { AIAssistantModal } from './components/ai/AIAssistantModal';
+import { LandingPage } from './pages/LandingPage';
+import { CustomerApp } from './pages/CustomerApp';
+import { AdminApp } from './pages/AdminApp';
+import { FarmerApp } from './pages/FarmerApp';
 import { Bot, Sparkles } from 'lucide-react';
+import type { UserRole } from './types';
 
-export function App() {
-  const { state, store } = useStore();
-  const [adminView, setAdminView] = useState<AdminViewType>('overview');
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+function LegacyRolePortal() {
+  const navigate = useNavigate();
+  const { state } = useStore();
+  const { isAuthenticated, user, logout } = useAuth();
   const [isAIOpen, setIsAIOpen] = useState(false);
-  const [aiCropContext, setAiCropContext] = useState<{ cropName: string; growthStage: string } | undefined>(undefined);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [splashDone, setSplashDone] = useState(false);
 
-  const role = state.currentUser.role;
+  if (!isAuthenticated || !user) {
+    return (
+      <LoginScreen
+        onLogin={(loggedRole: UserRole) => {
+          if (loggedRole === 'super_admin' || loggedRole === 'operations_admin') navigate('/admin');
+          else if (loggedRole === 'farmer') navigate('/farmer');
+          else if (loggedRole === 'customer') navigate('/customer');
+        }}
+      />
+    );
+  }
+
+  const role = user.role || state.currentUser.role;
+  if (role === 'super_admin') return <Navigate to="/admin" replace />;
+  if (role === 'farmer') return <Navigate to="/farmer" replace />;
+  if (role === 'customer') return <Navigate to="/customer" replace />;
 
   const portalBg: Record<string, string> = {
-    super_admin:      'bg-gradient-to-br from-emerald-50 via-green-50 to-teal-50',
     operations_admin: 'bg-gradient-to-br from-blue-50 via-indigo-50 to-sky-50',
-    buyer:            'bg-gradient-to-br from-purple-50 via-violet-50 to-indigo-50',
-    farmer:           'bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50',
-    expert:           'bg-gradient-to-br from-sky-50 via-cyan-50 to-blue-50',
-    warehouse_staff:  'bg-gradient-to-br from-orange-50 via-amber-50 to-red-50',
+    buyer: 'bg-gradient-to-br from-purple-50 via-violet-50 to-indigo-50',
+    expert: 'bg-gradient-to-br from-sky-50 via-cyan-50 to-blue-50',
+    warehouse_staff: 'bg-gradient-to-br from-orange-50 via-amber-50 to-red-50',
     delivery_partner: 'bg-gradient-to-br from-indigo-50 via-purple-50 to-blue-50',
-    customer:         'bg-gradient-to-br from-rose-50 via-pink-50 to-red-50',
   };
   const bgClass = portalBg[role] ?? 'bg-[#F7F8F5]';
 
-  const handleOpenAIWithContext = (context?: { cropName: string; growthStage: string }) => {
-    setAiCropContext(context);
-    setIsAIOpen(true);
-  };
-
-  // Show splash screen first
-  if (!splashDone) {
-    return <SplashScreen onDone={() => setSplashDone(true)} />;
-  }
-
-  // Show Login screen
-  if (!isLoggedIn) {
-    return <LoginScreen onLogin={() => setIsLoggedIn(true)} />;
-  }
-
   return (
-    <div className={`min-h-screen ${bgClass} text-[#17231C] flex flex-col font-sans transition-colors duration-700`}>
-
-      {/* Sticky Header */}
-      <Header
-        onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
-        onOpenCart={() => {
-          if (role !== 'customer') store.switchRole('customer');
-        }}
-        onLogout={() => setIsLoggedIn(false)}
-      />
-
-      {/* Main Content */}
+    <div className={`min-h-screen ${bgClass} text-[#17231C] flex flex-col font-sans`}>
+      <Header onLogout={() => void logout()} />
       <div className="flex-1 flex flex-col md:flex-row max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-5 gap-5">
-
-        {/* Super Admin: sidebar + content */}
-        {role === 'super_admin' ? (
-          <>
-            <AdminSidebar
-              currentView={adminView}
-              onSelectView={(v) => {
-                if (v === 'ai_agronomy') setIsAIOpen(true);
-                else setAdminView(v);
-              }}
-              isOpen={isSidebarOpen}
-              onClose={() => setIsSidebarOpen(false)}
-            />
-            <main className="flex-1 min-w-0">
-              {adminView === 'overview' && (
-                <OverviewView
-                  onNavigate={(v) => {
-                    if (v === 'ai_agronomy') setIsAIOpen(true);
-                    else setAdminView(v as import('./components/admin/AdminSidebar').AdminViewType);
-                  }}
-                />
-              )}
-              {adminView === 'buyers' && <BuyerManagementView />}
-              {adminView === 'requirements' && <BuyerRequirementsView />}
-              {adminView === 'agreements' && <SupplyAgreementsView />}
-              {adminView === 'farmers' && <FarmerManagementView />}
-              {adminView === 'land' && <LandDiscoveryView />}
-              {adminView === 'crop_planning' && <CropPlanningView />}
-              {adminView === 'harvest' && <HarvestManagementView />}
-              {adminView === 'quality' && <QualityVerificationView />}
-              {adminView === 'warehouse' && <WarehouseInventoryView />}
-              {adminView === 'orders' && <OrdersLogisticsView />}
-              {adminView === 'delivery' && <OrdersLogisticsView />}
-              {adminView === 'expert_support' && <ExpertPortal />}
-              {adminView === 'finance' && <FinancePaymentsView />}
-              {adminView === 'reports' && <ReportsSettingsView />}
-              {adminView === 'settings' && <ReportsSettingsView />}
-            </main>
-          </>
-        ) : role === 'operations_admin' ? (
+        {role === 'operations_admin' ? (
           <main className="flex-1 w-full"><OperationsPortal /></main>
         ) : role === 'buyer' ? (
           <main className="flex-1 w-full"><BuyerPortal /></main>
-        ) : role === 'farmer' ? (
-          <main className="flex-1 w-full"><FarmerPortal onOpenAI={handleOpenAIWithContext} /></main>
         ) : role === 'expert' ? (
           <main className="flex-1 w-full"><ExpertPortal /></main>
         ) : role === 'warehouse_staff' ? (
@@ -137,7 +70,6 @@ export function App() {
         )}
       </div>
 
-      {/* Floating AI Button */}
       <div className="fixed bottom-5 left-5 z-40">
         <button
           onClick={() => setIsAIOpen(true)}
@@ -157,26 +89,42 @@ export function App() {
         </button>
       </div>
 
-      {/* AI Modal */}
-      <AIAssistantModal
-        isOpen={isAIOpen}
-        onClose={() => { setIsAIOpen(false); setAiCropContext(undefined); }}
-        initialContext={aiCropContext}
-      />
-
-      {/* Footer */}
-      <footer className="mt-auto border-t border-gray-100 bg-white py-4">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between text-[11px] text-gray-400 gap-2">
-          <div className="flex items-center gap-2">
-            <span className="font-bold text-[#104D35]">PURE KRISHI</span>
-            <span>•</span>
-            <span>Demand-First Agritech & AI Agricultural Operating System</span>
-          </div>
-          <span>Zero Chemical Residue Certified</span>
-        </div>
-      </footer>
-
+      <AIAssistantModal isOpen={isAIOpen} onClose={() => setIsAIOpen(false)} />
     </div>
+  );
+}
+
+export function App() {
+  const [splashDone, setSplashDone] = useState<boolean>(() => {
+    try {
+      return sessionStorage.getItem('pure_krishi_splash_seen') === '1';
+    } catch {
+      return false;
+    }
+  });
+
+  const handleSplashDone = () => {
+    try {
+      sessionStorage.setItem('pure_krishi_splash_seen', '1');
+    } catch {
+      // ignore
+    }
+    setSplashDone(true);
+  };
+
+  if (!splashDone) {
+    return <SplashScreen onDone={handleSplashDone} />;
+  }
+
+  return (
+    <Routes>
+      <Route path="/" element={<LandingPage />} />
+      <Route path="/customer/*" element={<CustomerApp />} />
+      <Route path="/admin/*" element={<AdminApp />} />
+      <Route path="/farmer/*" element={<FarmerApp />} />
+      <Route path="/portal/*" element={<LegacyRolePortal />} />
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
   );
 }
 

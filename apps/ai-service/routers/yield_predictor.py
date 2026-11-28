@@ -58,3 +58,4 @@ Return prediction in JSON:
 }}"""
     
     return await gemini.generate_text(prompt)
+

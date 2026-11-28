@@ -34,7 +34,9 @@ function playOpeningSound() {
     // gentle pad underneath
     playNote(196.0, t + 0.0,  2.5, 0.08); // G3 pad
     playNote(261.6, t + 0.0,  2.5, 0.07); // C4 pad
-  } catch (_) {}
+  } catch {
+    // Web Audio API may be blocked before user interaction
+  }
 }
 
 const features = [
@@ -160,6 +162,14 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onDone }) => {
       {/* Glow blobs */}
       <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl animate-pulse" />
       <div className="absolute bottom-1/4 right-1/4 w-72 h-72 bg-green-400/8 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+
+      {/* Skip intro shortcut */}
+      <button
+        onClick={onDone}
+        className="absolute top-5 right-5 z-20 px-3.5 py-1.5 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 text-emerald-200 text-xs font-semibold transition-all"
+      >
+        Skip Intro →
+      </button>
 
       {/* ── LOGO block ── */}
       <div className={`relative flex flex-col items-center transition-all duration-700 ease-out ${

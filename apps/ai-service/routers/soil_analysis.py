@@ -51,3 +51,4 @@ Provide analysis in JSON:
 @router.post("/soil-analysis/image")
 async def analyze_soil_image():
     return {"message": "Upload soil test report image for analysis"}
+

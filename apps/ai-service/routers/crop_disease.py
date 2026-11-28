@@ -58,3 +58,4 @@ async def get_disease_info(disease_name: str):
 }}"""
     result = await gemini.generate_text(prompt)
     return result
+

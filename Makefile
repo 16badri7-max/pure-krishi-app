@@ -31,3 +31,4 @@ install:
 
 push:
 	git add . && git commit -m "Update: $(shell date)" && git push origin main
+

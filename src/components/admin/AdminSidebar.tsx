@@ -3,7 +3,6 @@ import {
   LayoutDashboard, 
   Building2, 
   FileText, 
-  ScrollText, 
   Tractor, 
   MapPin, 
   CalendarRange, 
@@ -18,20 +17,22 @@ import {
   BarChart3, 
   Settings,
   X,
-  Thermometer,
-  PackageSearch,
   Users,
-  Store,
   Handshake,
   ScanFace,
   Lock,
   ShieldCheck,
-  RefreshCw,
-  Camera
+  Tag,
+  Package,
+  BarChart,
+  UserCog,
+  Boxes
 } from 'lucide-react';
+import { useStore } from '../../services/useStore';
 
 export type AdminViewType = 
   | 'overview'
+  | 'customers'
   | 'buyers'
   | 'requirements'
   | 'agreements'
@@ -40,13 +41,18 @@ export type AdminViewType =
   | 'crop_planning'
   | 'harvest'
   | 'quality'
+  | 'products'
+  | 'categories'
+  | 'inventory'
   | 'warehouse'
   | 'orders'
   | 'delivery'
+  | 'analytics'
   | 'ai_agronomy'
   | 'expert_support'
   | 'finance'
   | 'reports'
+  | 'employees'
   | 'settings';
 
 interface AdminSidebarProps {
@@ -66,6 +72,15 @@ const FaceIDModal: React.FC<{ onSuccess: () => void; onCancel: () => void }> = (
   const [dots, setDots] = useState('');
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const onSuccessRef = useRef(onSuccess);
+
+  useEffect(() => {
+    onSuccessRef.current = onSuccess;
+  }, [onSuccess]);
+
+  const stopCamera = () => {
+    streamRef.current?.getTracks().forEach(t => t.stop());
+  };
 
   useEffect(() => {
     // Try to open camera
@@ -90,7 +105,7 @@ const FaceIDModal: React.FC<{ onSuccess: () => void; onCancel: () => void }> = (
           setPhase('success');
           setTimeout(() => {
             stopCamera();
-            onSuccess();
+            onSuccessRef.current();
           }, 900);
           return 100;
         }
@@ -104,10 +119,6 @@ const FaceIDModal: React.FC<{ onSuccess: () => void; onCancel: () => void }> = (
       stopCamera();
     };
   }, []);
-
-  const stopCamera = () => {
-    streamRef.current?.getTracks().forEach(t => t.stop());
-  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
@@ -219,9 +230,16 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
   isOpen,
   onClose,
 }) => {
+  const { state } = useStore();
   const [showFaceID, setShowFaceID] = useState(false);
   const [pendingView, setPendingView] = useState<AdminViewType | null>(null);
   const [financeUnlocked, setFinanceUnlocked] = useState(false);
+
+  const pendingProductCount = state.productSubmissions.filter(s => s.status === 'pending' || s.status === 'under_review').length;
+  const pendingStockCount = state.stockSubmissions.filter(s => s.status === 'pending').length;
+  const pendingOrderCount =
+    state.customerOrders.filter(o => o.status !== 'Delivered' && o.status !== 'Cancelled').length +
+    state.b2bOrders.filter(o => o.status !== 'Delivered' && o.status !== 'Completed' && o.status !== 'Cancelled').length;
 
   type NavItem = { id: string; label: string; icon: React.ComponentType<{ className?: string }>; badge?: string };
   type NavSection = { group: string; color?: string; bgTint?: string; locked?: boolean; items: NavItem[] };
@@ -231,7 +249,21 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
       group: '📊 MAIN DASHBOARD',
       bgTint: 'bg-emerald-50/60',
       items: [
-        { id: 'overview', label: 'HQ Overview', icon: LayoutDashboard },
+        { id: 'overview', label: 'Main Dashboard', icon: LayoutDashboard },
+        { id: 'analytics', label: 'Business Analytics', icon: BarChart },
+      ]
+    },
+    {
+      group: '🛒 MARKETPLACE & CATALOGUE',
+      color: 'text-emerald-800',
+      bgTint: 'bg-green-50/60',
+      items: [
+        { id: 'customers', label: 'Customer Management', icon: Users, badge: String(state.customerAccounts.length) },
+        { id: 'products', label: 'Product Management', icon: Package, badge: pendingProductCount > 0 ? `${pendingProductCount} NEW` : undefined },
+        { id: 'categories', label: 'Product Categories', icon: Tag },
+        { id: 'inventory', label: 'Inventory Management', icon: Boxes, badge: pendingStockCount > 0 ? `${pendingStockCount} REQ` : undefined },
+        { id: 'orders', label: 'Order Management', icon: ShoppingCart, badge: pendingOrderCount > 0 ? String(pendingOrderCount) : undefined },
+        { id: 'delivery', label: 'Delivery Management', icon: Truck },
       ]
     },
     {
@@ -245,7 +277,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
       ]
     },
     {
-      group: '🌾 FARMER CULTIVATION',
+      group: '🌾 FARMER OPERATIONS',
       color: 'text-amber-700',
       bgTint: 'bg-amber-50/60',
       items: [
@@ -257,23 +289,21 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
       ]
     },
     {
-      group: '🏭 WAREHOUSE & COLD STORAGE',
+      group: '🏭 WAREHOUSE OPERATIONS',
       color: 'text-purple-700',
       bgTint: 'bg-purple-50/60',
       items: [
-        { id: 'warehouse', label: 'Warehouses & Inventory', icon: Warehouse },
-        { id: 'orders', label: 'B2B Purchase Orders', icon: ShoppingCart },
-        { id: 'delivery', label: 'Logistics & Dispatch', icon: Truck },
+        { id: 'warehouse', label: 'Warehouse Management', icon: Warehouse },
       ]
     },
     {
-      group: '💰 FINANCIAL DETAILS',
+      group: '💰 REPORTS & FINANCE',
       color: 'text-rose-700',
       bgTint: 'bg-rose-50/60',
       locked: true,
       items: [
         { id: 'finance', label: 'Finance & Gross Margin', icon: BadgeIndianRupee },
-        { id: 'reports', label: 'Audit & Compliance', icon: BarChart3 },
+        { id: 'reports', label: 'Reports & Audit Logs', icon: BarChart3 },
       ]
     },
     {
@@ -286,10 +316,11 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
       ]
     },
     {
-      group: '⚙️ SYSTEM SETTINGS',
+      group: '⚙️ ADMIN & GOVERNANCE',
       bgTint: 'bg-gray-50/80',
       items: [
-        { id: 'settings', label: 'Settings & Config', icon: Settings },
+        { id: 'employees', label: 'Employee Management', icon: UserCog },
+        { id: 'settings', label: 'Settings', icon: Settings },
       ]
     },
   ];

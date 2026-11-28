@@ -1,34 +1,44 @@
 import React, { useState } from 'react';
 import { 
-  ShoppingCart, 
   Truck, 
-  Plus, 
   Search, 
-  Filter, 
-  CheckCircle2, 
-  Clock, 
   MapPin, 
-  FileText, 
-  UserCheck,
-  ChevronRight,
-  PackageCheck,
-  Lock,
-  Unlock
+  Lock
 } from 'lucide-react';
 import { useStore } from '../../services/useStore';
-import { B2BOrder, OrderStatus } from '../../types';
+import { centralApi } from '../../lib/centralApi';
+import { CustomerOrder, OrderStatus } from '../../types';
 import { Badge } from '../common/Badge';
 import { Modal } from '../common/Modal';
 
 export const OrdersLogisticsView: React.FC = () => {
   const { state, store } = useStore();
+  const [orderTab, setOrderTab] = useState<'customer' | 'b2b'>('customer');
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
-  const [selectedOrder, setSelectedOrder] = useState<B2BOrder | null>(null);
   const [isLockModalOpen, setIsLockModalOpen] = useState(false);
   const [lockBuyerId, setLockBuyerId] = useState(state.buyers[0]?.id || '');
   const [lockProductId, setLockProductId] = useState(state.products[0]?.id || '');
   const [lockQty, setLockQty] = useState(1200);
+
+  const customerStatuses: CustomerOrder['status'][] = [
+    'Order Placed',
+    'Confirmed',
+    'Packed',
+    'Dispatched',
+    'Out for Delivery',
+    'Delivered',
+    'Cancelled',
+  ];
+
+  const filteredCustomerOrders = state.customerOrders.filter(o => {
+    const matchesSearch =
+      o.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      o.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      o.shippingAddress.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = filterStatus === 'all' || o.status === filterStatus;
+    return matchesSearch && matchesStatus;
+  });
 
 
   const orderStatuses: OrderStatus[] = [
@@ -75,6 +85,24 @@ export const OrdersLogisticsView: React.FC = () => {
         </div>
 
         <div className="flex items-center space-x-2">
+          <div className="flex items-center bg-gray-100 p-1 rounded-xl">
+            <button
+              onClick={() => { setOrderTab('customer'); setFilterStatus('all'); }}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                orderTab === 'customer' ? 'bg-white shadow text-[#104D35]' : 'text-gray-600'
+              }`}
+            >
+              Customer Orders ({state.customerOrders.length})
+            </button>
+            <button
+              onClick={() => { setOrderTab('b2b'); setFilterStatus('all'); }}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                orderTab === 'b2b' ? 'bg-white shadow text-[#104D35]' : 'text-gray-600'
+              }`}
+            >
+              B2B Orders ({state.b2bOrders.length})
+            </button>
+          </div>
           <button
             onClick={() => setIsLockModalOpen(true)}
             className="px-3.5 py-2 bg-amber-500 hover:bg-amber-600 text-stone-900 text-xs font-bold rounded-xl shadow-xs flex items-center space-x-1.5 transition-all"
@@ -84,6 +112,119 @@ export const OrdersLogisticsView: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {/* Customer B2C Orders Management */}
+      {orderTab === 'customer' && (
+        <div className="space-y-4">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-white p-3 rounded-2xl border border-[#176B45]/15 shadow-sm">
+            <div className="relative w-full sm:w-80">
+              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search customer order ID, name, address..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-9 pr-4 py-1.5 text-xs rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#176B45]"
+              />
+            </div>
+            <select
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value)}
+              className="text-xs rounded-xl border border-gray-200 px-3 py-1.5 bg-white text-gray-700"
+            >
+              <option value="all">All Customer Order Statuses</option>
+              {customerStatuses.map(s => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="space-y-4">
+            {filteredCustomerOrders.map(ord => (
+              <div key={ord.id} className="bg-white rounded-2xl p-5 border border-[#176B45]/15 shadow-sm space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-gray-100">
+                  <div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-mono text-xs font-bold text-[#176B45]">{ord.id}</span>
+                      <h3 className="text-sm font-bold text-[#17231C]">{ord.customerName}</h3>
+                      <Badge variant={ord.status === 'Delivered' ? 'green' : ord.status === 'Cancelled' ? 'red' : 'blue'}>
+                        {ord.status}
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-[#66736A] mt-0.5 flex items-center gap-1">
+                      <MapPin className="w-3.5 h-3.5 text-gray-400" />
+                      <span>{ord.shippingAddress} • {ord.customerPhone}</span>
+                    </p>
+                  </div>
+                  <div className="text-left sm:text-right">
+                    <div className="text-base font-extrabold text-[#104D35]">₹{ord.totalAmount.toLocaleString()}</div>
+                    <span className="text-[11px] text-gray-500">
+                      {new Date(ord.orderDate).toLocaleString()} • {ord.paymentMethod?.toUpperCase() || 'UPI'} ({ord.paymentStatus || 'Paid'})
+                    </span>
+                  </div>
+                </div>
+
+                <div className="bg-[#FAF8F0] rounded-xl p-3 border border-[#176B45]/10 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                  {ord.items.map((item, idx) => (
+                    <div key={idx} className="bg-white p-2.5 rounded-lg border border-gray-200 flex items-center justify-between">
+                      <div>
+                        <strong className="text-gray-800">{item.product.name}</strong>
+                        <p className="text-[10px] text-gray-500">Farmer: {item.product.farmerName}</p>
+                      </div>
+                      <div className="text-right">
+                        <span className="font-bold text-[#17231C]">{item.quantity} × ₹{item.product.price}</span>
+                        <p className="text-[10px] font-bold text-[#104D35]">₹{(item.quantity * item.product.price).toLocaleString()}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs pt-1">
+                  <div>
+                    <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Coordinate Warehouse</label>
+                    <select
+                      value={ord.assignedWarehouseId || state.warehouses[0]?.id || ''}
+                      onChange={e => centralApi.adminUpdateCustomerOrder(ord.id, { assignedWarehouseId: e.target.value })}
+                      className="w-full rounded-xl border border-gray-200 px-3 py-1.5 bg-white"
+                    >
+                      {state.warehouses.map(w => (
+                        <option key={w.id} value={w.id}>{w.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Coordinate Farmer Fulfilment</label>
+                    <select
+                      value={ord.assignedFarmerName || ord.items[0]?.product.farmerName || ''}
+                      onChange={e => centralApi.adminUpdateCustomerOrder(ord.id, { assignedFarmerName: e.target.value })}
+                      className="w-full rounded-xl border border-gray-200 px-3 py-1.5 bg-white"
+                    >
+                      {state.farmers.map(f => (
+                        <option key={f.id} value={f.name}>{f.name} ({f.district})</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Order Status</label>
+                    <select
+                      value={ord.status}
+                      onChange={e => centralApi.adminUpdateCustomerOrder(ord.id, { status: e.target.value as CustomerOrder['status'] })}
+                      className="w-full rounded-xl border border-gray-200 px-3 py-1.5 bg-white font-bold text-[#176B45]"
+                    >
+                      {customerStatuses.map(s => (
+                        <option key={s} value={s}>{s}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {orderTab === 'b2b' && (
+      <>
 
       {/* B2B Customer Lock Active Monitor */}
       <div className="bg-amber-50/50 rounded-2xl p-4 border border-amber-200/80 space-y-3">
@@ -250,6 +391,8 @@ export const OrdersLogisticsView: React.FC = () => {
           );
         })}
       </div>
+      </>
+      )}
 
       {/* Super Admin B2B Order & Produce Lock Modal */}
       {isLockModalOpen && (

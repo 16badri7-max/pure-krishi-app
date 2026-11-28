@@ -305,8 +305,11 @@ export interface ProductListing {
   name: string;
   category: 'Vegetables' | 'Fruits' | 'Grains' | 'Pulses' | 'Dry fruits' | 'Spices';
   price: number;
+  sellingPrice?: number;
+  mrp?: number;
   unit: string;
   availableQuantity: number;
+  farmerId?: string;
   farmerName: string;
   farmerLocation: string;
   farmName: string;
@@ -315,6 +318,11 @@ export interface ProductListing {
   imageUrl: string;
   description: string;
   nutritionalBenefits: string[];
+  approvalStatus?: 'draft' | 'pending' | 'approved' | 'rejected' | 'archived';
+  isPublished?: boolean;
+  isActive?: boolean;
+  lowStockThreshold?: number;
+  updatedAt?: string;
   isLockedForCustomers?: boolean;
   lockedByBuyerName?: string;
   lockedReason?: string;
@@ -337,9 +345,16 @@ export interface CustomerOrder {
   subtotal: number;
   deliveryFee: number;
   totalAmount: number;
-  status: 'Order Placed' | 'Packed' | 'Out for Delivery' | 'Delivered';
+  status: 'Order Placed' | 'Confirmed' | 'Packed' | 'Dispatched' | 'Out for Delivery' | 'Delivered' | 'Cancelled';
   orderDate: string;
   estimatedDelivery: string;
+  paymentMethod?: 'upi' | 'cod' | 'card';
+  paymentStatus?: 'Paid' | 'Pending';
+  deliverySlot?: string;
+  assignedWarehouseId?: string;
+  assignedFarmerName?: string;
+  deliveryPartnerName?: string;
+  trackingNotes?: string;
 }
 
 export interface AIMessage {
@@ -437,4 +452,123 @@ export interface SavedAddress {
   city: string;
   pincode: string;
   isDefault?: boolean;
+}
+
+export interface ProductCategory {
+  id: string;
+  name: ProductListing['category'] | string;
+  slug: string;
+  description: string;
+  icon: string;
+  displayOrder: number;
+  isActive: boolean;
+  createdAt: string;
+}
+
+export interface FarmerProductSubmission {
+  id: string;
+  farmerId: string;
+  farmerName: string;
+  farmId?: string;
+  submissionType: 'new_product' | 'price_change' | 'description_update' | 'stock_update';
+  targetProductId?: string;
+  productName: string;
+  category: ProductListing['category'];
+  description: string;
+  images: string[];
+  proposedPrice: number;
+  unit: string;
+  proposedQuantity: number;
+  harvestDate?: string;
+  organicCertified: boolean;
+  farmingNotes?: string;
+  status: 'pending' | 'under_review' | 'approved' | 'rejected';
+  adminNotes?: string;
+  reviewedBy?: string;
+  reviewedAt?: string;
+  createdProductId?: string;
+  createdAt: string;
+}
+
+export interface StockSubmission {
+  id: string;
+  farmerId: string;
+  farmerName: string;
+  productId?: string;
+  warehouseId?: string;
+  harvestBatchId?: string;
+  productName: string;
+  submittedQuantity: number;
+  unit: string;
+  harvestDate: string;
+  expectedGrade: string;
+  notes?: string;
+  status: 'pending' | 'approved' | 'rejected';
+  adminNotes?: string;
+  reviewedBy?: string;
+  reviewedAt?: string;
+  createdAt: string;
+}
+
+export interface EmployeeRecord {
+  id: string;
+  fullName: string;
+  email: string;
+  phone: string;
+  roleTitle: string;
+  department: string;
+  accessRole: UserRole;
+  assignedWarehouseId?: string;
+  status: 'active' | 'on_leave' | 'inactive';
+  joinedAt: string;
+}
+
+export interface AuditLogEntry {
+  id: string;
+  userId?: string;
+  actorName: string;
+  actorRole: string;
+  action: string;
+  entityType: string;
+  entityId: string;
+  summary: string;
+  oldValues?: Record<string, unknown>;
+  newValues?: Record<string, unknown>;
+  createdAt: string;
+}
+
+export interface PlatformSettings {
+  deliveryFee: number;
+  freeDeliveryAbove: number;
+  lowStockThresholdKg: number;
+  requireAdminApprovalForProducts: boolean;
+  requireAdminApprovalForStock: boolean;
+  maintenanceMode: boolean;
+}
+
+export interface CustomerAccountSummary {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  location: string;
+  status: 'active' | 'suspended';
+  totalOrders: number;
+  totalSpent: number;
+  lastOrderAt?: string;
+  joinedAt: string;
+}
+
+export interface DeliveryRecord {
+  id: string;
+  orderId: string;
+  orderType: 'B2C' | 'B2B';
+  customerOrBuyerName: string;
+  destination: string;
+  driverName: string;
+  vehicleNumber: string;
+  currentLocation: string;
+  status: 'Assigned' | 'In Transit' | 'Out for Delivery' | 'Delivered' | 'Failed';
+  estimatedArrival: string;
+  updatedAt: string;
 }

@@ -1,20 +1,12 @@
 import React, { useState } from 'react';
 import { 
-  Tractor, 
   Plus, 
   Search, 
   MapPin, 
-  Phone, 
-  Mail, 
-  Wheat, 
-  BadgeIndianRupee, 
-  CheckCircle2, 
-  ChevronRight,
-  ShieldCheck,
-  Building2
+  Phone
 } from 'lucide-react';
 import { useStore } from '../../services/useStore';
-import { Farmer } from '../../types';
+import { centralApi } from '../../lib/centralApi';
 import { Badge } from '../common/Badge';
 import { Modal } from '../common/Modal';
 
@@ -23,6 +15,9 @@ export const FarmerManagementView: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterState, setFilterState] = useState('all');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+
+  const pendingFarmerSubs = state.productSubmissions.filter(s => s.status === 'pending' || s.status === 'under_review');
+  const pendingStockSubs = state.stockSubmissions.filter(s => s.status === 'pending');
 
   // New Farmer Form State
   const [formData, setFormData] = useState({
@@ -133,6 +128,68 @@ export const FarmerManagementView: React.FC = () => {
           </select>
         </div>
       </div>
+
+      {/* Pending Farmer Submissions Banner */}
+      {(pendingFarmerSubs.length > 0 || pendingStockSubs.length > 0) && (
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="text-xs font-bold text-amber-950 uppercase tracking-wider">
+              Pending Farmer Product & Stock Submissions ({pendingFarmerSubs.length + pendingStockSubs.length})
+            </h3>
+            <span className="text-[11px] text-amber-800 font-semibold">Admin review required before live publication</span>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+            {pendingFarmerSubs.map(sub => (
+              <div key={sub.id} className="bg-white p-3 rounded-xl border border-amber-200 flex items-center justify-between gap-2">
+                <div>
+                  <strong className="text-[#17231C]">{sub.productName}</strong>
+                  <p className="text-[11px] text-gray-600">
+                    {sub.farmerName} • ₹{sub.proposedPrice}/{sub.unit} • {sub.proposedQuantity} {sub.unit}
+                  </p>
+                </div>
+                <div className="flex gap-1.5 shrink-0">
+                  <button
+                    onClick={() => void centralApi.adminReviewProductSubmission(sub.id, 'approved')}
+                    className="px-2.5 py-1 bg-[#176B45] text-white font-bold rounded-lg text-[11px]"
+                  >
+                    Approve
+                  </button>
+                  <button
+                    onClick={() => void centralApi.adminReviewProductSubmission(sub.id, 'rejected', { adminNotes: 'Rejected by Admin' })}
+                    className="px-2.5 py-1 bg-rose-50 text-rose-700 font-bold rounded-lg text-[11px]"
+                  >
+                    Reject
+                  </button>
+                </div>
+              </div>
+            ))}
+            {pendingStockSubs.map(stk => (
+              <div key={stk.id} className="bg-white p-3 rounded-xl border border-amber-200 flex items-center justify-between gap-2">
+                <div>
+                  <strong className="text-[#17231C]">Stock: {stk.productName}</strong>
+                  <p className="text-[11px] text-gray-600">
+                    {stk.farmerName} • +{stk.submittedQuantity} {stk.unit}
+                  </p>
+                </div>
+                <div className="flex gap-1.5 shrink-0">
+                  <button
+                    onClick={() => void centralApi.adminReviewStockSubmission(stk.id, 'approved')}
+                    className="px-2.5 py-1 bg-[#176B45] text-white font-bold rounded-lg text-[11px]"
+                  >
+                    Approve
+                  </button>
+                  <button
+                    onClick={() => void centralApi.adminReviewStockSubmission(stk.id, 'rejected', 'Rejected by Admin')}
+                    className="px-2.5 py-1 bg-rose-50 text-rose-700 font-bold rounded-lg text-[11px]"
+                  >
+                    Reject
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Farmers Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4">

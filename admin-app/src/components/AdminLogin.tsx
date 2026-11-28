@@ -2,11 +2,6 @@ import React, { useState } from 'react';
 import { ShieldCheck, Eye, EyeOff, Leaf } from 'lucide-react';
 import type { AdminUser } from '../App';
 
-const ADMIN_CREDENTIALS = [
-  { username: 'veerabhadrappa', password: '123456789', name: 'Veerabhadrappa', role: 'Super Admin' },
-  { username: 'admin', password: 'admin123', name: 'Admin User', role: 'Admin' },
-];
-
 interface Props { onLogin: (user: AdminUser) => void; }
 
 export const AdminLogin: React.FC<Props> = ({ onLogin }) => {
@@ -20,12 +15,32 @@ export const AdminLogin: React.FC<Props> = ({ onLogin }) => {
     e.preventDefault();
     setLoading(true);
     setError('');
-    await new Promise(r => setTimeout(r, 600));
-    const match = ADMIN_CREDENTIALS.find(c => c.username === username && c.password === password);
-    if (match) {
-      onLogin({ username: match.username, name: match.name, role: match.role });
-    } else {
-      setError('Invalid username or password');
+    try {
+      const apiUrl = ((import.meta as unknown) as { env?: Record<string, string> }).env?.VITE_API_URL || '';
+      if (!apiUrl) {
+        setError('Configure VITE_API_URL or use the main /admin portal with Supabase Auth.');
+        setLoading(false);
+        return;
+      }
+      const res = await fetch(`${apiUrl.replace(/\/$/, '')}/api/v1/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: username, password }),
+      });
+      if (!res.ok) {
+        setError('Invalid authorized administrator credentials');
+        setLoading(false);
+        return;
+      }
+      const data = await res.json();
+      if (data.user?.role !== 'super_admin' && data.user?.role !== 'operations_admin') {
+        setError('Access denied: Administrator privileges required');
+        setLoading(false);
+        return;
+      }
+      onLogin({ username: data.user.email, name: data.user.name || 'Admin', role: data.user.role });
+    } catch {
+      setError('Unable to reach authentication server');
     }
     setLoading(false);
   };
@@ -99,7 +114,7 @@ export const AdminLogin: React.FC<Props> = ({ onLogin }) => {
           </form>
 
           <div className="mt-4 p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl">
-            <p className="text-emerald-400 text-[11px] font-semibold text-center">Demo: veerabhadrappa / 123456789</p>
+            <p className="text-emerald-400 text-[11px] font-semibold text-center">Authorized Admin Credentials Required</p>
           </div>
         </div>
 

@@ -51,3 +51,4 @@ Return in JSON format:
 }}"""
     
     return await gemini.generate_text(prompt)
+

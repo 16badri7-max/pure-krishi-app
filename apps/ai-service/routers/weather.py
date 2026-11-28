@@ -47,3 +47,4 @@ Provide weather-based farming advice in JSON:
     
     result = await gemini.generate_text(prompt)
     return result
+

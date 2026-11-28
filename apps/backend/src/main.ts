@@ -7,9 +7,21 @@ import rateLimit from 'express-rate-limit';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
+  // Trust reverse proxy headers (Railway / Render / Vercel)
+  const httpAdapter = app.getHttpAdapter();
+  const instance = httpAdapter?.getInstance?.();
+  if (instance?.set) {
+    instance.set('trust proxy', 1);
+  }
+
   // Security
   app.use(helmet());
-  app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 100, message: 'Too many requests' }));
+  app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 300, message: 'Too many requests' }));
+
+  const extraOrigins = (process.env.CORS_ORIGINS || '')
+    .split(',')
+    .map(s => s.trim())
+    .filter(Boolean);
 
   // CORS
   app.enableCors({
@@ -18,9 +30,11 @@ async function bootstrap() {
       'http://localhost:5173',
       'https://pure-krishi-app.vercel.app',
       /\.vercel\.app$/,
+      /\.up\.railway\.app$/,
       /\.onrender\.com$/,
+      ...extraOrigins,
     ],
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     credentials: true,
   });
 

@@ -45,3 +45,4 @@ Provide your response in JSON:
 @router.get("/voice-query/languages")
 async def get_supported_languages():
     return {"supported_languages": SUPPORTED_LANGUAGES}
+

@@ -5,7 +5,6 @@ import {
   Bell,
   Menu,
   LogOut,
-  ChevronDown,
   Pencil,
 } from 'lucide-react';
 import { useStore } from '../../services/useStore';
@@ -198,28 +197,32 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar, onOpenCart, onL
                 )}
               </div>
 
-              {/* Cart */}
-              <button
-                onClick={onOpenCart}
-                className="relative w-9 h-9 flex items-center justify-center rounded-xl text-white/80 hover:text-white hover:bg-white/15 transition-colors"
-                title="Cart"
-              >
-                <ShoppingBag className="w-5 h-5" />
-                {cartItemCount > 0 && (
-                  <span className="absolute top-0.5 right-0.5 w-4 h-4 bg-amber-400 text-gray-900 text-[9px] font-bold rounded-full flex items-center justify-center ring-2 ring-white/30">
-                    {cartItemCount}
-                  </span>
-                )}
-              </button>
+              {/* Cart — shown only for Customer role */}
+              {user.role === 'customer' && onOpenCart && (
+                <button
+                  onClick={onOpenCart}
+                  className="relative w-9 h-9 flex items-center justify-center rounded-xl text-white/80 hover:text-white hover:bg-white/15 transition-colors"
+                  title="Cart"
+                >
+                  <ShoppingBag className="w-5 h-5" />
+                  {cartItemCount > 0 && (
+                    <span className="absolute top-0.5 right-0.5 w-4 h-4 bg-amber-400 text-gray-900 text-[9px] font-bold rounded-full flex items-center justify-center ring-2 ring-white/30">
+                      {cartItemCount}
+                    </span>
+                  )}
+                </button>
+              )}
 
-              {/* Reset */}
-              <button
-                onClick={() => setShowResetConfirm(true)}
-                className="w-9 h-9 flex items-center justify-center rounded-xl text-white/60 hover:text-amber-300 hover:bg-white/10 transition-colors"
-                title="Reset Demo Data"
-              >
-                <RotateCcw className="w-4 h-4" />
-              </button>
+              {/* Reset — Admin only */}
+              {(user.role === 'super_admin' || user.role === 'operations_admin') && (
+                <button
+                  onClick={() => setShowResetConfirm(true)}
+                  className="w-9 h-9 flex items-center justify-center rounded-xl text-white/60 hover:text-amber-300 hover:bg-white/10 transition-colors"
+                  title="Reset Local Demo Data"
+                >
+                  <RotateCcw className="w-4 h-4" />
+                </button>
+              )}
 
               {/* Divider */}
               <div className="w-px h-6 bg-white/20 hidden sm:block" />

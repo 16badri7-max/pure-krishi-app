@@ -30,9 +30,11 @@ import {
 const Hero3DSection = lazy(() => import('./Hero3DSection'));
 const MidSection3D = lazy(() => import('./MidSection3D'));
 import { useStore } from '../../services/useStore';
-import { ProductListing, CustomerOrder, SavedAddress } from '../../types';
+import { centralApi } from '../../lib/centralApi';
+import { ProductListing, CustomerOrder } from '../../types';
 import { Badge } from '../common/Badge';
 import { Modal } from '../common/Modal';
+import { ProfileEditorModal } from '../common/ProfileEditorModal';
 
 export type CustomerNav = 
   | 'shop'
@@ -61,8 +63,14 @@ export const CustomerMarketplace: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [traceProduct, setTraceProduct] = useState<ProductListing | null>(null);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [checkoutError, setCheckoutError] = useState('');
+  const [isCheckingOut, setIsCheckingOut] = useState(false);
   const [orderSuccess, setOrderSuccess] = useState<CustomerOrder | null>(null);
-  const [trackingOrder, setTrackingOrder] = useState<CustomerOrder | null>(state.customerOrders[0] || null);
+  const myCustomerOrders = state.customerOrders.filter(
+    o => o.customerId === state.currentUser.id || state.currentUser.role === 'super_admin' || state.currentUser.role === 'operations_admin'
+  );
+  const [trackingOrder, setTrackingOrder] = useState<CustomerOrder | null>(myCustomerOrders[0] || null);
 
   // Customer type: individual or bulk
   const [customerType, setCustomerType] = useState<'individual' | 'bulk'>('individual');
@@ -84,9 +92,15 @@ export const CustomerMarketplace: React.FC = () => {
   const [paymentMethod, setPaymentMethod] = useState<'upi' | 'cod' | 'card'>('upi');
   const [deliverySlot, setDeliverySlot] = useState('Tomorrow Morning (07:00 AM - 10:00 AM)');
 
-  const categories = ['all', 'Vegetables', 'Fruits', 'Grains', 'Pulses', 'Dry fruits', 'Spices'];
+  const activeCategoryNames = state.categories.filter(c => c.isActive).map(c => c.name);
+  const categories = ['all', ...(activeCategoryNames.length > 0 ? activeCategoryNames : ['Vegetables', 'Fruits', 'Grains', 'Pulses', 'Dry fruits', 'Spices'])];
 
-  const filteredProducts = state.products.filter((p) => {
+  // Customers only see Admin-approved, published, active products
+  const approvedProducts = state.products.filter(
+    p => p.isActive !== false && p.isPublished !== false && (p.approvalStatus ?? 'approved') === 'approved'
+  );
+
+  const filteredProducts = approvedProducts.filter((p) => {
     const matchesSearch = 
       p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       p.farmerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -97,9 +111,9 @@ export const CustomerMarketplace: React.FC = () => {
     return matchesSearch && matchesCat && matchesLock;
   });
 
-
   const cartItemCount = state.cart.reduce((s, i) => s + i.quantity, 0);
   const cartSubtotal = state.cart.reduce((s, i) => s + i.product.price * i.quantity, 0);
+  const effectiveDeliveryFee = cartSubtotal >= state.platformSettings.freeDeliveryAbove ? 0 : state.platformSettings.deliveryFee;
 
   const toggleWishlist = (id: string) => {
     if (wishlistIds.includes(id)) {
@@ -109,19 +123,27 @@ export const CustomerMarketplace: React.FC = () => {
     }
   };
 
-  const handleCheckout = (e: React.FormEvent) => {
+  const handleCheckout = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (state.cart.length === 0) return;
+    if (state.cart.length === 0 || isCheckingOut) return;
+    setCheckoutError('');
+    setIsCheckingOut(true);
 
-    const order = store.checkoutCustomerOrder(shippingAddress, customerPhone);
-    setOrderSuccess(order);
-    setTrackingOrder(order);
-    setIsCheckoutOpen(false);
-  };
-
-  const handleBulkQuote = (e: React.FormEvent) => {
-    e.preventDefault();
-    setBulkQuoteSubmitted(true);
+    try {
+      const order = await centralApi.placeCustomerOrder({
+        shippingAddress,
+        customerPhone,
+        paymentMethod,
+        deliverySlot,
+      });
+      setOrderSuccess(order);
+      setTrackingOrder(order);
+      setIsCheckoutOpen(false);
+    } catch (err) {
+      setCheckoutError(err instanceof Error ? err.message : 'Unable to place order. Please check stock availability.');
+    } finally {
+      setIsCheckingOut(false);
+    }
   };
 
   // Order tracking steps
@@ -136,21 +158,24 @@ export const CustomerMarketplace: React.FC = () => {
 
   const getStepIndex = (status: string) => {
     switch (status) {
-      case 'Order Placed': return 1;
+      case 'Order Placed': return 0;
+      case 'Confirmed': return 1;
       case 'Packed': return 2;
+      case 'Dispatched': return 3;
       case 'Out for Delivery': return 4;
       case 'Delivered': return 5;
-      default: return 2;
+      default: return 1;
     }
   };
 
   const navItems = [
     { id: 'shop', label: 'Fresh Marketplace', icon: ShoppingBag },
-    { id: 'orders', label: 'My Orders', icon: Package, badge: state.customerOrders.length },
+    { id: 'orders', label: 'My Orders', icon: Package, badge: myCustomerOrders.length },
     { id: 'track_order', label: 'Live Order Tracker', icon: Truck },
     { id: 'farmers', label: 'Meet the Farmers', icon: UserCheck },
     { id: 'wishlist', label: 'Wishlist', icon: Heart, badge: wishlistIds.length },
     { id: 'addresses', label: 'Saved Addresses', icon: MapPin },
+    { id: 'profile', label: 'My Profile', icon: User },
     { id: 'support', label: 'Customer Support', icon: HelpCircle },
   ];
 
@@ -239,7 +264,10 @@ export const CustomerMarketplace: React.FC = () => {
                 <Suspense fallback={
                   <div className="bg-gradient-to-r from-[#176B45] via-[#104D35] to-[#176B45] rounded-3xl p-8 text-white animate-pulse h-40" />
                 }>
-                  <Hero3DSection onShopNow={() => document.getElementById('product-grid')?.scrollIntoView({ behavior: 'smooth' })} />
+                  <Hero3DSection
+                    onShopNow={() => document.getElementById('product-grid')?.scrollIntoView({ behavior: 'smooth' })}
+                    onMeetFarmers={() => setActiveNav('farmers')}
+                  />
                 </Suspense>
 
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-white p-3 rounded-2xl border border-[#176B45]/15 shadow-sm">
@@ -320,17 +348,29 @@ export const CustomerMarketplace: React.FC = () => {
                             <div>
                               <span className="text-base font-extrabold text-[#104D35]">₹{prod.price}</span>
                               <span className="text-[10px] text-gray-500"> / {prod.unit}</span>
+                              <span className={`block text-[10px] font-semibold ${prod.availableQuantity <= 0 ? 'text-rose-600' : prod.availableQuantity <= 25 ? 'text-amber-600' : 'text-emerald-700'}`}>
+                                {prod.availableQuantity <= 0 ? 'Out of Stock' : prod.availableQuantity <= 25 ? `Only ${prod.availableQuantity} left` : `${prod.availableQuantity} available`}
+                              </span>
                             </div>
                             {cartItem ? (
                               <div className="flex items-center space-x-2 bg-[#F0F7F0] px-2 py-1 rounded-xl border border-[#DCECDC]">
                                 <button onClick={() => store.updateCartQuantity(prod.id, cartItem.quantity - 1)} className="p-1 text-[#176B45] hover:bg-[#DCECDC] rounded"><Minus className="w-3.5 h-3.5" /></button>
                                 <span className="font-bold text-xs text-[#176B45]">{cartItem.quantity}</span>
-                                <button onClick={() => store.updateCartQuantity(prod.id, cartItem.quantity + 1)} className="p-1 text-[#176B45] hover:bg-[#DCECDC] rounded"><Plus className="w-3.5 h-3.5" /></button>
+                                <button
+                                  disabled={cartItem.quantity >= prod.availableQuantity}
+                                  onClick={() => store.updateCartQuantity(prod.id, cartItem.quantity + 1)}
+                                  className="p-1 text-[#176B45] hover:bg-[#DCECDC] rounded disabled:opacity-40"
+                                >
+                                  <Plus className="w-3.5 h-3.5" />
+                                </button>
                               </div>
                             ) : (
-                              <button onClick={() => store.addToCart(prod, 1)}
-                                className="px-3.5 py-1.5 bg-[#176B45] hover:bg-[#104D35] text-white text-xs font-bold rounded-xl shadow-xs transition-all flex items-center space-x-1">
-                                <ShoppingBag className="w-3.5 h-3.5" /><span>Add</span>
+                              <button
+                                disabled={prod.availableQuantity <= 0}
+                                onClick={() => store.addToCart(prod, 1)}
+                                className="px-3.5 py-1.5 bg-[#176B45] hover:bg-[#104D35] disabled:bg-gray-300 text-white text-xs font-bold rounded-xl shadow-xs transition-all flex items-center space-x-1"
+                              >
+                                <ShoppingBag className="w-3.5 h-3.5" /><span>{prod.availableQuantity <= 0 ? 'Sold Out' : 'Add'}</span>
                               </button>
                             )}
                           </div>
@@ -570,8 +610,8 @@ export const CustomerMarketplace: React.FC = () => {
 
             {/* Past Orders List */}
             <div className="bg-white rounded-2xl p-5 border border-[#176B45]/15 shadow-sm space-y-3">
-              <h3 className="text-sm font-bold text-[#17231C]">Order History ({state.customerOrders.length})</h3>
-              {state.customerOrders.map(ord => (
+              <h3 className="text-sm font-bold text-[#17231C]">My Order History ({myCustomerOrders.length})</h3>
+              {myCustomerOrders.map(ord => (
                 <div 
                   key={ord.id}
                   onClick={() => setTrackingOrder(ord)}
@@ -660,6 +700,43 @@ export const CustomerMarketplace: React.FC = () => {
                 </div>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* Navigation: My Profile */}
+        {activeNav === 'profile' && (
+          <div className="bg-white rounded-2xl p-5 border border-[#176B45]/15 shadow-sm space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+              <div>
+                <h2 className="text-base font-bold text-[#17231C]">My Customer Profile</h2>
+                <p className="text-xs text-[#66736A]">Manage only your own account details & delivery preferences.</p>
+              </div>
+              <button
+                onClick={() => setIsProfileModalOpen(true)}
+                className="px-4 py-2 bg-[#176B45] text-white text-xs font-bold rounded-xl"
+              >
+                Edit My Profile
+              </button>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+              <div className="p-3 bg-[#FAF8F0] rounded-xl">
+                <span className="text-gray-500 block">Full Name</span>
+                <strong>{state.currentUser.name}</strong>
+              </div>
+              <div className="p-3 bg-[#FAF8F0] rounded-xl">
+                <span className="text-gray-500 block">Email</span>
+                <strong>{state.currentUser.email}</strong>
+              </div>
+              <div className="p-3 bg-[#FAF8F0] rounded-xl">
+                <span className="text-gray-500 block">Phone</span>
+                <strong>{state.currentUser.phone || customerPhone}</strong>
+              </div>
+              <div className="p-3 bg-[#FAF8F0] rounded-xl">
+                <span className="text-gray-500 block">Location</span>
+                <strong>{state.currentUser.location || 'Mumbai, Maharashtra'}</strong>
+              </div>
+            </div>
+            <ProfileEditorModal isOpen={isProfileModalOpen} onClose={() => setIsProfileModalOpen(false)} />
           </div>
         )}
 
@@ -790,13 +867,18 @@ export const CustomerMarketplace: React.FC = () => {
               ))}
               <div className="pt-2 border-t border-gray-200 flex justify-between text-xs text-gray-600">
                 <span>Eco-friendly Reefer Dispatch Fee:</span>
-                <span>₹40</span>
+                <span>{effectiveDeliveryFee === 0 ? 'FREE' : `₹${effectiveDeliveryFee}`}</span>
               </div>
               <div className="flex justify-between text-sm font-extrabold text-[#104D35]">
                 <span>Total Amount:</span>
-                <span>₹{cartSubtotal + 40}</span>
+                <span>₹{cartSubtotal + effectiveDeliveryFee}</span>
               </div>
             </div>
+            {checkoutError && (
+              <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs font-semibold text-rose-700">
+                {checkoutError}
+              </div>
+            )}
 
             <div>
               <label className="block text-xs font-semibold text-[#17231C] mb-1">Delivery Address *</label>
@@ -876,9 +958,10 @@ export const CustomerMarketplace: React.FC = () => {
               </button>
               <button
                 type="submit"
-                className="px-5 py-2 text-xs font-bold text-white bg-[#176B45] hover:bg-[#104D35] rounded-xl shadow-md transition-all"
+                disabled={isCheckingOut}
+                className="px-5 py-2 text-xs font-bold text-white bg-[#176B45] hover:bg-[#104D35] disabled:opacity-50 rounded-xl shadow-md transition-all"
               >
-                Confirm Order (₹{cartSubtotal + 40})
+                {isCheckingOut ? 'Placing Order...' : `Confirm Order (₹${cartSubtotal + effectiveDeliveryFee})`}
               </button>
             </div>
           </form>

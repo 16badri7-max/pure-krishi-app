@@ -517,9 +517,17 @@ ALTER TABLE payments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE ai_messages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE expert_reviews ENABLE ROW LEVEL SECURITY;
 
--- RLS Policies Examples
-CREATE POLICY "Public products viewable by all" ON products FOR SELECT USING (true);
-CREATE POLICY "Public profiles read" ON profiles FOR SELECT USING (true);
+-- RLS Policies
+DROP POLICY IF EXISTS "Public products viewable by all" ON products;
+CREATE POLICY "Public products viewable by all" ON products FOR SELECT USING (is_active = TRUE);
+DROP POLICY IF EXISTS "Admins manage products" ON products;
+CREATE POLICY "Admins manage products" ON products FOR ALL USING (
+  EXISTS (SELECT 1 FROM profiles WHERE profiles.id = auth.uid() AND profiles.role IN ('super_admin', 'operations_admin'))
+);
+DROP POLICY IF EXISTS "Public profiles read" ON profiles;
+CREATE POLICY "Users read own profile or admin reads all" ON profiles FOR SELECT USING (
+  id = auth.uid() OR EXISTS (SELECT 1 FROM profiles p WHERE p.id = auth.uid() AND p.role IN ('super_admin', 'operations_admin'))
+);
 CREATE POLICY "Admins full access to buyers" ON buyers FOR ALL USING (
   EXISTS (SELECT 1 FROM profiles WHERE profiles.id = auth.uid() AND profiles.role IN ('super_admin', 'operations_admin'))
 );
@@ -530,3 +538,5 @@ CREATE POLICY "Farmers see own farms and crops" ON farms FOR ALL USING (
   EXISTS (SELECT 1 FROM farmers WHERE farmers.id = farms.farmer_id AND farmers.profile_id = auth.uid()) 
   OR EXISTS (SELECT 1 FROM profiles WHERE profiles.id = auth.uid() AND profiles.role IN ('super_admin', 'operations_admin', 'expert'))
 );
+-- Note: Apply supabase/migrations/001_upgrade.sql for product_categories, farmer_product_submissions,
+-- stock_submissions, employees, platform_settings, atomic RPC transactions, and full RLS policies.

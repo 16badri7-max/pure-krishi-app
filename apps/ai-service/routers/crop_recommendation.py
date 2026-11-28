@@ -56,3 +56,4 @@ Provide top 5 crop recommendations in JSON:
 }}"""
     
     return await gemini.generate_text(prompt)
+
