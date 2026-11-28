@@ -2,10 +2,9 @@ services:
   # ── NestJS Backend API ───────────────────────────────────────────
   - type: web
     name: pure-krishi-backend
-    runtime: node
+    runtime: docker
     rootDir: apps/backend
-    buildCommand: npm install && npm run build
-    startCommand: node dist/main
+    dockerfilePath: ./Dockerfile
     plan: free
     healthCheckPath: /api/v1/health
     envVars:
@@ -14,17 +13,17 @@ services:
       - key: PORT
         value: 3001
       - key: JWT_SECRET
-        generateValue: true
-      - key: DATABASE_URL
-        fromDatabase:
-          name: pure-krishi-db
-          property: connectionString
+        value: purekrishi-prod-jwt-secret-2024-xk9mq7
+      - key: JWT_EXPIRES_IN
+        value: 7d
       - key: SUPABASE_URL
-        sync: false
+        value: https://htsnjgcgbxwtypgiqtjv.supabase.co
       - key: SUPABASE_ANON_KEY
+        value: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh0c25qZ2NnYnh3dHlwZ2lxdGp2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTQ1NDAzMDQsImV4cCI6MjExMDExNjMwNH0.2i8QeFrSmBkOjcMwFoPO6aGByGA5jpjfY88m9P6zqzQ
+      - key: SUPABASE_SERVICE_ROLE_KEY
         sync: false
-      - key: GEMINI_API_KEY
-        sync: false
+      - key: CORS_ORIGINS
+        value: https://pure-krishi-app.vercel.app
       - key: WEB_URL
         value: https://pure-krishi-app.vercel.app
 
@@ -42,10 +41,3 @@ services:
         sync: false
       - key: WEATHER_API_KEY
         sync: false
-
-# ── PostgreSQL Database ──────────────────────────────────────────
-databases:
-  - name: pure-krishi-db
-    plan: free
-    databaseName: pure_krishi
-    user: pure_krishi_user
